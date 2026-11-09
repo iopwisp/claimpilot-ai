@@ -2,6 +2,7 @@ import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
 from celery import Celery
+from celery.signals import worker_ready
 from sqlalchemy import select
 
 from .ai.provider import VERSION, provider
@@ -83,3 +84,19 @@ def enqueue(kind, entity, job):
         run(kind, entity, job)
     else:
         executor.submit(run, kind, entity, job)
+
+
+def resume_pending():
+    """Republish committed jobs after a crash between commit and broker publication."""
+    with Session() as db:
+        documents = list(db.scalars(select(Document.id).where(Document.status == "QUEUED")))
+        claims = list(db.execute(select(Claim.id, Claim.job_id).where(Claim.status == "PROCESSING")))
+    for doc_id in documents:
+        enqueue("document", doc_id, doc_id)
+    for claim_id, job_id in claims:
+        enqueue("analysis", claim_id, job_id)
+
+
+@worker_ready.connect
+def on_worker_start(**_):
+    resume_pending()

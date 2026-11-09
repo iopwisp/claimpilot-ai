@@ -14,7 +14,6 @@ import {
   LayoutDashboard,
   LogOut,
   Plus,
-  RefreshCw,
   Search,
   ShieldCheck,
   SlidersHorizontal,
@@ -182,10 +181,12 @@ function App() {
         .catch(() => sessionStorage.removeItem("token"));
   }, []);
   async function refresh() {
+    const session = sessionStorage.getItem("token");
     const [list, metrics] = await Promise.all([
       request<Claim[]>("/claims"),
       request<{ documents_processing: number }>("/dashboard"),
     ]);
+    if (session !== sessionStorage.getItem("token")) return;
     setClaims(list);
     setDocs(metrics.documents_processing);
   }
@@ -289,6 +290,9 @@ function App() {
               try {
                 await request("/auth/logout", "POST");
                 sessionStorage.removeItem("token");
+                  setClaims([]);
+                  setDocs(0);
+                  setError("");
                 setUser(null);
                 select("");
                 setView("Overview");

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.ai.provider import VERSION, provider
 from app.db import Base, Claim, Document, Field, User
 from app.documents import path_for, process, rank_policy, validate
-from app.schemas import ClaimInput
+from app.schemas import ClaimInput, Extraction
 from app.workflow import analyze
 from .fixtures import CASES, ROOT, pdf_bytes
 
@@ -20,6 +20,19 @@ from .fixtures import CASES, ROOT, pdf_bytes
 def run():
     ai = provider()
     totals = Counter()
+    extract = ai.extract
+
+    def measured_extract(text):
+        totals["pages"] += 1
+        try:
+            parsed = Extraction.model_validate(extract(text))
+        except ValueError:
+            # A refused or malformed extraction counts as a miss for this page.
+            return Extraction(kind="OTHER", facts=[])
+        totals["valid_pages"] += 1
+        return parsed
+
+    ai.extract = measured_extract
     confusion = Counter()
     results = []
     with tempfile.TemporaryDirectory() as tmp, patch("app.documents.STATE", Path(tmp)):
@@ -48,17 +61,12 @@ def run():
                     db.add(doc)
                     db.flush()
                     path_for(doc).write_bytes(data)
-                    totals["pages"] += len(source["pages"])
-                    try:
-                        process(db, doc, ai)
-                        totals["valid_pages"] += len(doc.pages)
-                    except (ValueError, RuntimeError):
-                        doc.status = "FAILED"
+                    process(db, doc, ai)
                     db.flush()
                     confusion[source["kind"], doc.kind] += 1
                     facts = list(db.scalars(select(Field).where(Field.document_id == doc.id)))
                     expected = source["facts"]
-                    totals["fields"] += len(expected)
+                    totals["fields"] += len(set(expected) | {f.name for f in facts})
                     for key, value in expected.items():
                         totals["correct_fields"] += int(
                             {f.value for f in facts if f.name == key} == {value}

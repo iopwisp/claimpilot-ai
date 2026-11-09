@@ -1,13 +1,13 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
+import {randomUUID} from "node:crypto";
 test("handler submits evidence and assigned reviewer reconciles dates", async ({
   page,
-  request,
 }) => {
   const tag = Date.now(),
     email = "handler-" + tag + "@example.invalid",
-    password = "Synthetic-Case-2026";
+    password = randomUUID();
   const demo = path.resolve("../demo/02-date-mismatch");
   const claim = JSON.parse(
     fs.readFileSync(path.join(demo, "claim.json"), "utf8"),

@@ -19,11 +19,12 @@ jobs:
         env:
           E2E_URL: http://127.0.0.1:8080
           E2E_REVIEWER_EMAIL: qa-review@example.invalid
-          E2E_REVIEWER_PASSWORD: synthetic-review-pass
         run: |
+          export E2E_REVIEWER_PASSWORD="$(openssl rand -hex 24)"
           curl -fsS "$E2E_URL/health"
-          curl -fsS -H 'Content-Type: application/json' --data '{"email":"qa-review@example.invalid","password":"synthetic-review-pass"}' "$E2E_URL/api/v1/auth/register"
+          jq -n '{email:env.E2E_REVIEWER_EMAIL,password:env.E2E_REVIEWER_PASSWORD}' | curl -fsS -H 'Content-Type: application/json' --data-binary @- "$E2E_URL/api/v1/auth/register"
           docker compose exec -T backend python -m app.manage reviewer "$E2E_REVIEWER_EMAIL"
+          python tests/stack_smoke.py
           cd frontend
           npx playwright install --with-deps chromium
           npm run e2e

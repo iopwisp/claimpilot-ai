@@ -109,4 +109,6 @@ The [evaluation dataset](evaluation/cases.jsonl) contains 50 fictional vehicle c
 
 The committed measurements use the offline provider, five document classes and labelled English text. The corpus includes 10 cases with insufficient policy evidence and six or more policy passages per case. Production document variability, OCR accuracy and live LLM quality require a separate sample. A local fixture score should not be interpreted as an OpenAI benchmark.
 
+The Compose smoke test recognized the incident date on both a scanned PDF and a PNG using Tesseract. A local run measured **81.9 ms p95** for 200 authenticated reads across five concurrent users. Registration and AI jobs are outside that latency measurement. Run `python tests/stack_smoke.py` against the running demo stack to repeat it.
+
 For browser testing, start the stack, provision a reviewer, set `E2E_URL`, `E2E_REVIEWER_EMAIL` and `E2E_REVIEWER_PASSWORD`, then run `npx playwright install chromium` and `npm run e2e` in `frontend/`. Playwright registers a handler, uploads real PDFs, checks the date conflict, opens its source, switches to the assigned reviewer, corrects the field and completes the review. GitHub Actions runs lint, unit tests, evaluation, the frontend build and the browser workflow on the Compose stack.

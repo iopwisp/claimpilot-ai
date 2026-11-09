@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
+import os
 
 from fastapi import Depends, FastAPI
 from sqlalchemy import text
 
 from app.db import Base, engine, session
+from app.jobs import resume_pending
 
 
 from app.api import auth, claims, documents, analysis
@@ -13,6 +15,8 @@ from app.api import auth, claims, documents, analysis
 async def lifespan(_):
     if engine.dialect.name == "sqlite":
         Base.metadata.create_all(engine)
+        if not os.getenv("REDIS_URL"):
+            resume_pending()
     yield
 
 
