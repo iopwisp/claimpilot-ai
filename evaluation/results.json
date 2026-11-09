@@ -1,0 +1,327 @@
+{
+  "model": "local-rules-v1",
+  "prompt": "2026-11-v1",
+  "temperature": null,
+  "metrics": {
+    "structured_extraction_exact_match": 1.0,
+    "document_classification_macro_f1": 1.0,
+    "retrieval_recall_at_5": 1.0,
+    "structured_output_validity": 1.0,
+    "source_citation_correctness": 1.0,
+    "insufficient_evidence_accuracy": 1.0
+  },
+  "counts": {
+    "pages": 493,
+    "valid_pages": 493,
+    "fields": 493,
+    "correct_fields": 493,
+    "citations": 493,
+    "correct_citations": 493,
+    "queries": 40,
+    "retrieved": 40,
+    "insufficient": 10,
+    "abstained": 10
+  },
+  "cases": [
+    {
+      "case": "synthetic-001",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-002",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-003",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-004",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-005",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-006",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-007",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-008",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-009",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-010",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-011",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-012",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-013",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-014",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-015",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-016",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-017",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-018",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-019",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-020",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-021",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-022",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-023",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-024",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-025",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-026",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-027",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-028",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-029",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-030",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-031",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-032",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-033",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-034",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-035",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-036",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-037",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-038",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-039",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-040",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-041",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-042",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-043",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-044",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-045",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-046",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-047",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-048",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-049",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    },
+    {
+      "case": "synthetic-050",
+      "issues_match": true,
+      "missing_match": true,
+      "policy_citation_match": true
+    }
+  ]
+}

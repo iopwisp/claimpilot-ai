@@ -1,0 +1,31 @@
+name: Verify ClaimPilot
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - run: pip install -r requirements.txt
+      - run: ruff check app tests && python -m pytest -q
+      - run: npm ci && npm test && npm run build
+        working-directory: frontend
+      - run: python -m app.ai.evaluation.run
+      - run: docker compose up -d --build --wait
+      - name: Exercise PostgreSQL, pgvector and Celery through the browser
+        env:
+          E2E_URL: http://127.0.0.1:8080
+          E2E_REVIEWER_EMAIL: qa-review@example.invalid
+          E2E_REVIEWER_PASSWORD: synthetic-review-pass
+        run: |
+          curl -fsS "$E2E_URL/health"
+          curl -fsS -H 'Content-Type: application/json' --data '{"email":"qa-review@example.invalid","password":"synthetic-review-pass"}' "$E2E_URL/api/v1/auth/register"
+          docker compose exec -T backend python -m app.manage reviewer "$E2E_REVIEWER_EMAIL"
+          cd frontend
+          npx playwright install --with-deps chromium
+          npm run e2e
+      - if: always()
+        run: docker compose down -v

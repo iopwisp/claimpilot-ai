@@ -1,0 +1,12 @@
+*
+!requirements.txt
+!app
+!app/**
+!migrations
+!migrations/**
+!alembic.ini
+!evaluation
+!evaluation/**
+!demo
+!demo/**
+**/__pycache__
