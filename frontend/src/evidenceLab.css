@@ -1,0 +1,236 @@
+.lab {
+  display: grid;
+  gap: 16px;
+}
+.lab h2,
+.lab h3,
+.lab p {
+  margin-top: 0;
+}
+.lab h3 {
+  font-size: 17px;
+  font-weight: 650;
+  margin-bottom: 10px;
+}
+.lab .panel {
+  min-width: 0;
+  margin: 0;
+}
+.labOverview {
+  padding: 22px 26px;
+  border-radius: 12px;
+  background: #183f35;
+  color: #fff;
+}
+.labIntro,
+.labLegend,
+.labMeter,
+.labFilters {
+  display: flex;
+}
+.labIntro {
+  gap: 14px;
+  align-items: flex-start;
+}
+.labIntro > svg {
+  margin-top: 6px;
+  flex: none;
+  color: #c8df9c;
+}
+.labIntro h2 {
+  font:
+    32px/1.1 Georgia,
+    serif;
+  margin-bottom: 5px;
+}
+.labIntro p,
+.labOverview small {
+  color: #d6e3d7;
+}
+.labMeter {
+  height: 8px;
+  gap: 0;
+  background: #456458;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 15px 0 8px;
+}
+.labMeter span {
+  flex-basis: 0;
+  transition: flex-grow 0.18s ease;
+}
+.labMeter .intact {
+  background: #bbd997;
+}
+.labMeter .reduced {
+  background: #f2bc71;
+}
+.labMeter .lost {
+  background: #f38b80;
+}
+.labLegend {
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.labGrid {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.8fr) minmax(0, 1.8fr);
+  align-items: start;
+  gap: 16px;
+}
+.labControls {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.labFile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  border-top: 1px solid #e4e9e3;
+  padding: 10px 0;
+  overflow-wrap: anywhere;
+}
+.labFile input {
+  width: 17px;
+  height: 17px;
+  accent-color: #245949;
+  flex: none;
+}
+.labFile small,
+.labItem small {
+  display: block;
+  color: #54685f;
+  font-weight: 400;
+}
+.labFile:has(input:not(:checked)) b {
+  color: #69756e;
+  text-decoration: line-through;
+}
+.lab .labPacket {
+  background: #f0f6eb;
+  overflow-wrap: anywhere;
+}
+.labPacket details {
+  margin: 10px 0 14px;
+}
+.labPacket summary,
+.labItem summary {
+  cursor: pointer;
+}
+.labPacket details > div {
+  margin-top: 10px;
+}
+.labPacket ul {
+  padding-left: 18px;
+  list-style: disc;
+  font-size: 13px;
+}
+.labFilters {
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.labFilters button {
+  padding: 5px 9px;
+  font-size: 13px;
+}
+.labFilters button[aria-pressed="true"] {
+  color: white;
+  background: #245949;
+  border-color: #245949;
+}
+.labItem {
+  border-top: 1px solid #e0e6df;
+  overflow-wrap: anywhere;
+}
+.labItem summary {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 0;
+}
+.labItem summary::before {
+  content: "›";
+  font-weight: bold;
+}
+.labItem[open] summary::before {
+  content: "⌄";
+}
+.labItem summary b {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.labStatus {
+  font-size: 12px;
+  white-space: nowrap;
+  border-radius: 12px;
+  padding: 3px 8px;
+  font-weight: 600;
+}
+.labStatus.intact {
+  background: #e7f0e3;
+  color: #2a5538;
+}
+.labStatus.reduced {
+  background: #fbedd4;
+  color: #71501a;
+}
+.labStatus.lost {
+  background: #fae4df;
+  color: #93362a;
+}
+.labSources {
+  margin: 0 0 12px 20px;
+  padding-left: 12px;
+  border-left: 2px solid #a7bba7;
+}
+.labSources div + div {
+  margin-top: 8px;
+}
+.labSources q {
+  display: block;
+  white-space: pre-line;
+}
+.labSources button {
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.labRecovery {
+  background: #fff4e7;
+  border-left: 3px solid #cc8441;
+  border-radius: 5px;
+  padding: 12px 14px;
+  margin: 14px 0;
+  overflow-wrap: anywhere;
+}
+.labRecovery h4 {
+  font-weight: 650;
+  margin-bottom: 8px;
+}
+.labRecovery ul {
+  margin: 8px 0 12px;
+}
+.labRecovery small {
+  display: block;
+}
+@media (max-width: 850px) {
+  .labGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 580px) {
+  .labOverview {
+    padding: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .labMeter span {
+    transition: none;
+  }
+}

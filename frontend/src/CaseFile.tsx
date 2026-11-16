@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { downloadReport } from "./exportReport";
 import { EvidenceTasks } from "./EvidenceTasks";
 import { AnalysisHistory } from "./AnalysisHistory";
+import { EvidenceLab } from "./EvidenceLab";
 import { isOutstanding } from "./api";
 import { ArrowRight, ExternalLink, FileText, Play, Upload } from "lucide-react";
 import {
@@ -43,6 +44,7 @@ export function CaseFile({
     [events, setEvents] = useState<Event[]>([]),
     [job, setJob] = useState(""),
     [tab, setTab] = useState("Documents"),
+    [historicalRun, setHistoricalRun] = useState(""),
     [error, err] = useState(""),
     [busy, setBusy] = useState(false),
     [source, setSource] = useState<{
@@ -203,13 +205,17 @@ export function CaseFile({
           "Documents",
           "Extracted data",
           "Review report",
+          "Evidence Lab",
           "History",
           "Activity",
         ].map((t) => (
           <button
             className={t === tab ? "current" : ""}
             key={t}
-            onClick={() => setTab(t)}
+            onClick={() => {
+              setHistoricalRun("");
+              setTab(t);
+            }}
           >
             {t}
           </button>
@@ -604,11 +610,23 @@ export function CaseFile({
           ))}
         </section>
       )}
+      {tab === "Evidence Lab" && (
+        <EvidenceLab
+          key={base + (historicalRun || job)}
+          base={base}
+          analysis={historicalRun || (report ? job : "")}
+          open={open}
+        />
+      )}
       {tab === "History" && (
         <AnalysisHistory
           base={base}
           job={job}
           status={claim.status}
+          openLab={(aid) => {
+            setHistoricalRun(aid);
+            setTab("Evidence Lab");
+          }}
           open={open}
         />
       )}

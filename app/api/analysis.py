@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.ai.provider import provider
 from app.db import Analysis, Audit, Document, EvidenceRequest, Field, Inconsistency, session, uid
 from app.documents import search_policy
+from app.evidence_lab import evidence_lab, recovery_packet
 from app.schemas import ClaimInput, Review
 from app.security import identity
 from app.workflow import COMPARED_FIELDS, facts_for, field_issues, normalized, row
@@ -128,12 +129,36 @@ def changes(before, after):
     }
 
 
-@api.get("/claims/{cid}/analyses/{aid}")
-def snapshot(cid: str, aid: str, auth=Depends(identity), db=Depends(session)):
-    claim_access(db, auth[0], cid)
+def saved_analysis(db, user, cid, aid):
+    claim_access(db, user, cid)
     record = db.scalar(select(Analysis).where(Analysis.id == aid, Analysis.claim_id == cid))
     if not record:
         raise HTTPException(404, "Analysis not found")
+    return record
+
+
+@api.get("/claims/{cid}/analyses/{aid}/evidence-lab")
+def lab(cid: str, aid: str, auth=Depends(identity), db=Depends(session)):
+    record = saved_analysis(db, auth[0], cid, aid)
+    return {"analysis_id": record.id, "analyzed_at": record.created_at, **evidence_lab(record.result)}
+
+
+class Scenario(BaseModel):
+    excluded: set[str]
+
+
+@api.post("/claims/{cid}/analyses/{aid}/evidence-lab/recovery")
+def recover_sources(cid: str, aid: str, body: Scenario, auth=Depends(identity), db=Depends(session)):
+    record = saved_analysis(db, auth[0], cid, aid)
+    try:
+        return recovery_packet(record.result, body.excluded)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+
+
+@api.get("/claims/{cid}/analyses/{aid}")
+def snapshot(cid: str, aid: str, auth=Depends(identity), db=Depends(session)):
+    record = saved_analysis(db, auth[0], cid, aid)
     earlier = (
         select(Analysis)
         .where(

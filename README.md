@@ -18,6 +18,12 @@ The default provider runs offline. The first launch creates a database password,
 
 ### Walk through a claim
 
+**Evidence Lab.** Import **Complete claim**, run **Analyze claim**, then open **Evidence Lab**. Switch off `form.pdf` to see which statements lose their last citation and which still have a page in another file. Expand a statement to read its quote and open the original page. **Find files to restore** suggests a repair for the current selection. **Try this packet** starts a separate scenario using the fewest files the search can prove sufficient, with a reason for each file. In this sample, the claim form and policy preserve all seven cited statements across five files.
+
+The lab reads one saved analysis. It tracks original extracted values and policy quotations. Conflicting values stay separate, reviewer corrections remain in the review report, and multiple pages of the same file count as one file. The packet covers these statements only. Reviewers still use the materials checklist for document requirements. Large searches can return a compact packet without a proof of minimum size. Simulations are temporary and also work with earlier runs through **History → Explore this run in Evidence Lab**.
+
+[View the two-file scenario in Evidence Lab](demo/media/evidence-lab.png)
+
 **Analysis history.** Open **History** in a case to inspect a saved run and its original source fields. Each subsequent run shows changes in checklist status, finding counts and policy evidence relative to its predecessor.
 
 **Requesting additional evidence.** In the review report, an assigned reviewer selects **Request material** beside a missing or unconfirmed item. The handler sees the request on the overview, opens the case, uploads or selects a processed document, and submits it under **Documents → Evidence requests**. The reviewer inspects the linked original and accepts it or returns it with a reason. Requests survive repeat analyses. After uploading new material the handler runs analysis again so the report reflects the new documents. Outstanding requests must be accepted or withdrawn before manual review can finish. Decisions appear in Activity and the exported report includes each request's latest disposition.

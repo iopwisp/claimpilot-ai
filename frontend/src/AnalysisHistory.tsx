@@ -26,11 +26,13 @@ export function AnalysisHistory({
   base,
   job,
   status,
+  openLab,
   open,
 }: {
   base: string;
   job: string;
   status: string;
+  openLab: (id: string) => void;
   open: (id: string, page?: number, quote?: string) => void;
 }) {
   const [versions, setVersions] = useState<Version[]>([]),
@@ -116,6 +118,9 @@ export function AnalysisHistory({
           )}
           {record && (
             <>
+              <button onClick={() => openLab(selected)}>
+                Explore this run in Evidence Lab
+              </button>
               <h3>
                 {diff
                   ? "Changes since run " + (versions.length - index - 1)
