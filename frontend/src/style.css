@@ -565,7 +565,7 @@ dialog[open] {
 }
 @media (max-width: 850px) {
   .shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   aside {
     padding: 12px 4%;
