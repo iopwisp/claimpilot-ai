@@ -65,6 +65,19 @@ def test_missing_evidence_handoff(client):
     assert decide(handler, "submit", 1, document_id=doc).status_code == 409
     assert decide(handler, "submit", 3, document_id=doc).json()["version"] == 4
     client.post(route + "/analyze", headers=handler).raise_for_status()
+    history = client.get(route + "/analyses", headers=reviewer).json()
+    assert len(history) == 2 and history[0]["current"] and history[1]["id"] == job
+    latest = client.get(route + "/analyses/" + history[0]["id"], headers=handler).json()
+    assert latest["previous_id"] == job
+    assert [d["filename"] for d in latest["changes"]["added_documents"]] == ["repair.pdf"]
+    assert latest["changes"]["materials"] == [
+        {"name": "Damage evidence", "before": "MISSING", "after": "PRESENT"}
+    ]
+    original = client.get(route + "/analyses/" + job, headers=reviewer).json()
+    assert original["changes"] is None and "repair.pdf" not in [
+        d["filename"] for d in original["report"]["documents"]
+    ]
+    assert client.get(foreign + "/analyses/" + job, headers=other).status_code == 404
     assert complete().status_code == 409
     assert decide(reviewer, "accept", 4).json()["status"] == "ACCEPTED"
     complete().raise_for_status()

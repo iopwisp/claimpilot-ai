@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { downloadReport } from "./exportReport";
 import { EvidenceTasks } from "./EvidenceTasks";
+import { AnalysisHistory } from "./AnalysisHistory";
 import { isOutstanding } from "./api";
 import { ArrowRight, ExternalLink, FileText, Play, Upload } from "lucide-react";
 import {
@@ -198,17 +199,21 @@ export function CaseFile({
         </p>
       )}
       <div className="tabs">
-        {["Documents", "Extracted data", "Review report", "Activity"].map(
-          (t) => (
-            <button
-              className={t === tab ? "current" : ""}
-              key={t}
-              onClick={() => setTab(t)}
-            >
-              {t}
-            </button>
-          ),
-        )}
+        {[
+          "Documents",
+          "Extracted data",
+          "Review report",
+          "History",
+          "Activity",
+        ].map((t) => (
+          <button
+            className={t === tab ? "current" : ""}
+            key={t}
+            onClick={() => setTab(t)}
+          >
+            {t}
+          </button>
+        ))}
       </div>
       {tab === "Documents" && (
         <EvidenceTasks
@@ -598,6 +603,14 @@ export function CaseFile({
             </div>
           ))}
         </section>
+      )}
+      {tab === "History" && (
+        <AnalysisHistory
+          base={base}
+          job={job}
+          status={claim.status}
+          open={open}
+        />
       )}
       {edit && tab === "Documents" && (
         <section className="panel">

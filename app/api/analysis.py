@@ -1,9 +1,10 @@
+from collections import Counter
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field as Input
 from sqlalchemy import select
 
 from app.ai.provider import provider
-from app.db import Analysis, Audit, Document, Field, Inconsistency, session, uid
+from app.db import Analysis, Audit, Document, EvidenceRequest, Field, Inconsistency, session, uid
 from app.documents import search_policy
 from app.schemas import ClaimInput, Review
 from app.security import identity
@@ -11,7 +12,7 @@ from app.workflow import COMPARED_FIELDS, facts_for, field_issues, normalized, r
 
 
 from .access import CLAIM, audit, claim_access, editable, dispatch
-from .evidence import ACTIVE, EvidenceRequest
+from .evidence import ACTIVE
 
 api = APIRouter(tags=["analysis"])
 
@@ -76,6 +77,79 @@ def report(cid: str, auth=Depends(identity), db=Depends(session)):
 
 class Question(BaseModel):
     question: str = Input(min_length=3, max_length=1000)
+
+
+@api.get("/claims/{cid}/analyses")
+def versions(cid: str, auth=Depends(identity), db=Depends(session)):
+    claim = claim_access(db, auth[0], cid)
+    query = (
+        select(Analysis.id, Analysis.model, Analysis.prompt_version, Analysis.created_at)
+        .where(Analysis.claim_id == cid)
+        .order_by(Analysis.created_at.desc(), Analysis.id.desc())
+    )
+    return [
+        {**dict(version), "current": version.id == claim.job_id}
+        for version in db.execute(query).mappings()
+    ]
+
+
+def changes(before, after):
+    def by_item(result):
+        return {item["name"]: item["status"] for item in result["required_items"]}
+
+    old, new = by_item(before), by_item(after)
+    # Findings can repeat for one field, e.g. several duplicate documents.
+
+    def counts(result):
+        return Counter((item["type"], item["field"]) for item in result["inconsistencies"])
+
+    previous, current = counts(before), counts(after)
+    old_docs = {d["id"]: d for d in before["documents"]}
+    new_docs = {d["id"]: d for d in after["documents"]}
+    return {
+        "added_documents": [d for k, d in new_docs.items() if k not in old_docs],
+        "removed_documents": [d for k, d in old_docs.items() if k not in new_docs],
+        "materials": [
+            {"name": name, "before": old.get(name), "after": new.get(name)}
+            for name in sorted(old.keys() | new.keys())
+            if old.get(name) != new.get(name)
+        ],
+        "findings": [
+            {
+                "type": kind,
+                "field": field,
+                "before": previous[kind, field],
+                "after": current[kind, field],
+            }
+            for kind, field in sorted(previous.keys() | current.keys())
+            if previous[kind, field] != current[kind, field]
+        ],
+        "policy_changed": before["policy"] != after["policy"],
+    }
+
+
+@api.get("/claims/{cid}/analyses/{aid}")
+def snapshot(cid: str, aid: str, auth=Depends(identity), db=Depends(session)):
+    claim_access(db, auth[0], cid)
+    record = db.scalar(select(Analysis).where(Analysis.id == aid, Analysis.claim_id == cid))
+    if not record:
+        raise HTTPException(404, "Analysis not found")
+    earlier = (
+        select(Analysis)
+        .where(
+            Analysis.claim_id == cid,
+            (Analysis.created_at < record.created_at)
+            | ((Analysis.created_at == record.created_at) & (Analysis.id < record.id)),
+        )
+        .order_by(Analysis.created_at.desc(), Analysis.id.desc())
+        .limit(1)
+    )
+    previous = db.scalar(earlier)
+    return {
+        "report": record.result,
+        "previous_id": previous.id if previous else None,
+        "changes": changes(previous.result, record.result) if previous else None,
+    }
 
 
 @api.post("/claims/{cid}/policy-search")

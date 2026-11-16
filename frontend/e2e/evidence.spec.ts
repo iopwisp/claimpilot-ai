@@ -86,6 +86,14 @@ test("reviewer requests evidence and handler supplies a processed document", asy
       .click();
     await checker.getByRole("button", { name: "Complete review" }).click();
     await expect(checker.locator(".heading .badge")).toHaveText("Completed");
+    await checker.getByRole("button", { name: "History", exact: true }).click();
+    await expect(
+      checker.getByText("Damage evidence · Missing → Present"),
+    ).toBeVisible();
+    await checker.getByLabel("Saved analysis").selectOption({ index: 1 });
+    await expect(
+      checker.getByRole("heading", { name: "Initial analysis" }),
+    ).toBeVisible();
   } finally {
     await handler.close();
     await reviewer.close();

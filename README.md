@@ -18,6 +18,8 @@ The default provider runs offline. The first launch creates a database password,
 
 ### Walk through a claim
 
+**Analysis history.** Open **History** in a case to inspect a saved run and its original source fields. Each subsequent run shows changes in checklist status, finding counts and policy evidence relative to its predecessor.
+
 **Requesting additional evidence.** In the review report, an assigned reviewer selects **Request material** beside a missing or unconfirmed item. The handler sees the request on the overview, opens the case, uploads or selects a processed document, and submits it under **Documents → Evidence requests**. The reviewer inspects the linked original and accepts it or returns it with a reason. Requests survive repeat analyses. After uploading new material the handler runs analysis again so the report reflects the new documents. Outstanding requests must be accepted or withdrawn before manual review can finish. Decisions appear in Activity and the exported report includes each request's latest disposition.
 
 For a staff-only workspace set `ALLOW_REGISTRATION=0` and provision accounts with `docker compose exec backend python -m app.manage handler user@example.invalid`. Compose uses a separate database owner for migrations. The API and worker use a restricted role with append-only access to audit history. Python dependencies are pinned with hashes in `requirements.lock`.
