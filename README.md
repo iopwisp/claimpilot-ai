@@ -18,11 +18,13 @@ The default provider runs offline. The first launch creates a database password,
 
 ### Walk through a claim
 
+**Requesting additional evidence.** In the review report, an assigned reviewer selects **Request material** beside a missing or unconfirmed item. The handler sees the request on the overview, opens the case, uploads or selects a processed document, and submits it under **Documents → Evidence requests**. The reviewer inspects the linked original and accepts it or returns it with a reason. Requests survive repeat analyses. After uploading new material the handler runs analysis again so the report reflects the new documents. Outstanding requests must be accepted or withdrawn before manual review can finish. Decisions appear in Activity and the exported report includes each request's latest disposition.
+
 For a staff-only workspace set `ALLOW_REGISTRATION=0` and provision accounts with `docker compose exec backend python -m app.manage handler user@example.invalid`. Compose uses a separate database owner for migrations. The API and worker use a restricted role with append-only access to audit history. Python dependencies are pinned with hashes in `requirements.lock`.
 
 The browser signs in with an eight-hour HttpOnly, SameSite=Strict cookie. Session tokens from the earlier browser version require a fresh sign-in. Role changes revoke active sessions. For an HTTPS installation set `COOKIE_SECURE=1`. JSON API clients can still use bearer tokens. The web entry point limits login and registration attempts per client IP.
 
-For a quick demonstration, register a handler and choose **Sample cases → Conflicting incident dates → Import sample**. Wait for the four PDFs to finish processing and select **Analyze claim**. Open either cited page from the date discrepancy to compare the source with the extracted value. The other samples demonstrate a complete file and missing damage evidence.
+For a quick demonstration, register a handler and choose **Sample cases → Conflicting incident dates → Import sample**. Wait for the four PDFs to finish processing and select **Analyze claim**. Open either cited page from the date discrepancy to compare the source with the extracted value. To try the evidence handoff, import **Missing damage evidence** and use the [matching follow-up invoice](demo/03-missing-evidence/follow-up/invoice.pdf) after the reviewer requests it.
 
 1. Register a handler. Create a claim with the values in one of the scenario folders below.
 2. Upload the PDFs in that folder. Wait for their status to become **Ready**, then choose **Analyze claim**.

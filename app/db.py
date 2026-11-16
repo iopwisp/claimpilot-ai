@@ -10,12 +10,14 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
     create_engine,
     event,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -127,6 +129,30 @@ class Analysis(Base):
     model = Column(String, nullable=False)
     prompt_version = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), default=now)
+
+
+class EvidenceRequest(Base):
+    __tablename__ = "evidence_requests"
+    __table_args__ = (
+        Index(
+            "uq_active_evidence_item",
+            "claim_id",
+            "item",
+            unique=True,
+            postgresql_where=text("status IN ('OPEN','SUBMITTED')"),
+            sqlite_where=text("status IN ('OPEN','SUBMITTED')"),
+        ),
+    )
+    id = Column(String, primary_key=True, default=uid)
+    claim_id = Column(ForeignKey("claims.id", ondelete="CASCADE"), nullable=False, index=True)
+    analysis_id = Column(ForeignKey("analyses.id", ondelete="CASCADE"), nullable=False)
+    item = Column(String, nullable=False)
+    status = Column(String, nullable=False, default="OPEN")
+    document_id = Column(ForeignKey("documents.id", ondelete="SET NULL"))
+    note = Column(Text, nullable=False, default="")
+    version = Column(Integer, nullable=False, default=1)
+    __mapper_args__ = {"version_id_col": version, "version_id_generator": False}
+    updated_at = Column(DateTime(timezone=True), default=now, onupdate=now)
 
 
 class WorkflowSettings(Base):

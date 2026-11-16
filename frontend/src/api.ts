@@ -4,6 +4,7 @@ export interface Account {
   role: string;
 }
 export interface Claim {
+  evidence_requests?: EvidenceTask[];
   reviewer_email?: string | null;
   id: string;
   claim_number: string;
@@ -16,6 +17,18 @@ export interface Claim {
   incident_description: string;
   created_at: string;
   fields?: Fact[];
+}
+export interface EvidenceTask {
+  id: string;
+  item: string;
+  status: "OPEN" | "SUBMITTED" | "ACCEPTED" | "WITHDRAWN";
+  note: string;
+  document_id: string | null;
+  version: number;
+  analysis_id: string;
+}
+export function isOutstanding(task: EvidenceTask) {
+  return task.status === "OPEN" || task.status === "SUBMITTED";
 }
 export interface Fact {
   id: string;

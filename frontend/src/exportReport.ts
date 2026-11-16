@@ -113,6 +113,20 @@ export function formatReport(
     "None.",
   );
   section(
+    "EVIDENCE REQUESTS",
+    (claim.evidence_requests || []).map((t) =>
+      [
+        t.item,
+        label(t.status),
+        docs.find((d) => d.id === t.document_id)?.filename,
+        t.note,
+      ]
+        .filter(Boolean)
+        .join(" — "),
+    ),
+    "None.",
+  );
+  section(
     "REVIEW HISTORY",
     review.actions.map(
       (a) =>

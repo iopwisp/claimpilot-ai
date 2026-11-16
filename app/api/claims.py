@@ -3,7 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, or_, select
 
-from app.db import Claim, Document, User, session
+from app.db import Claim, Document, EvidenceRequest, User, session
 from app.documents import path_for
 from app.schemas import ClaimInput
 from app.security import identity
@@ -11,6 +11,7 @@ from app.workflow import facts_for, row
 
 
 from .access import CLAIM, scope, audit, claim_access, editable, reset
+from .evidence import requests_for
 
 api = APIRouter(tags=["claims"])
 
@@ -50,7 +51,26 @@ def dashboard(auth=Depends(identity), db=Depends(session)):
     query = (
         select(func.count(Document.id)).join(Claim).where(scope(auth[0]), Document.status == "QUEUED")
     )
-    return {"documents_processing": db.scalar(query)}
+    user = auth[0]
+    statuses = {"handler": ("OPEN",), "reviewer": ("SUBMITTED",), "admin": ("OPEN", "SUBMITTED")}[
+        user.role
+    ]
+    tasks = (
+        select(
+            EvidenceRequest.id,
+            EvidenceRequest.claim_id,
+            Claim.claim_number,
+            EvidenceRequest.item,
+            EvidenceRequest.status,
+        )
+        .join(Claim)
+        .where(scope(user), EvidenceRequest.status.in_(statuses))
+        .order_by(EvidenceRequest.updated_at, EvidenceRequest.id)
+    )
+    return {
+        "documents_processing": db.scalar(query),
+        "evidence_queue": [dict(r) for r in db.execute(tasks).mappings()],
+    }
 
 
 @api.post("/claims", status_code=201)
@@ -72,6 +92,7 @@ def details(cid: str, auth=Depends(identity), db=Depends(session)):
     return {
         **row(claim, CLAIM),
         "fields": facts_for(db, cid),
+        "evidence_requests": requests_for(db, cid),
         "reviewer_email": reviewer.email if reviewer else None,
     }
 

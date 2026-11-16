@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { downloadReport } from "./exportReport";
+import { EvidenceTasks } from "./EvidenceTasks";
+import { isOutstanding } from "./api";
 import { ArrowRight, ExternalLink, FileText, Play, Upload } from "lucide-react";
 import {
   Account,
@@ -208,6 +210,16 @@ export function CaseFile({
           ),
         )}
       </div>
+      {tab === "Documents" && (
+        <EvidenceTasks
+          claim={claim}
+          docs={docs}
+          role={user.role}
+          busy={busy}
+          act={act}
+          open={open}
+        />
+      )}
       {tab === "Documents" && (
         <section className="panel">
           <div className="panelhead">
@@ -472,6 +484,29 @@ export function CaseFile({
                 <div className="item" key={r.name}>
                   <span className="grow">{r.name}</span>
                   <Badge value={r.status} />
+                  {canReview &&
+                    r.status !== "PRESENT" &&
+                    !claim.evidence_requests?.some(
+                      (t) =>
+                        t.item === r.name &&
+                        (isOutstanding(t) ||
+                          (t.status === "ACCEPTED" && t.analysis_id === job)),
+                    ) && (
+                      <button
+                        disabled={busy}
+                        onClick={() =>
+                          act(async () => {
+                            await request(base + "/evidence", "POST", {
+                              analysis_id: job,
+                              item: r.name,
+                            });
+                            setTab("Documents");
+                          })
+                        }
+                      >
+                        Request material
+                      </button>
+                    )}
                 </div>
               ))}
               <h3>Recommendations at analysis</h3>
@@ -529,9 +564,17 @@ export function CaseFile({
                     />
                     <button disabled={busy}>Add comment</button>
                   </form>
+                  {claim.evidence_requests?.some(isOutstanding) && (
+                    <p>
+                      Resolve the outstanding evidence requests in Documents to
+                      complete this review.
+                    </p>
+                  )}
                   <button
                     className="primary"
-                    disabled={busy}
+                    disabled={
+                      busy || claim.evidence_requests?.some(isOutstanding)
+                    }
                     onClick={() => act(() => review("complete"))}
                   >
                     Complete review <ArrowRight size={16} />

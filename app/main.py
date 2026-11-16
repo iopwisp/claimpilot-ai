@@ -10,7 +10,7 @@ from app.db import Base, engine, session
 from app.jobs import resume_pending
 
 
-from app.api import auth, claims, documents, analysis, samples
+from app.api import auth, claims, documents, analysis, samples, evidence
 
 
 @asynccontextmanager
@@ -50,5 +50,5 @@ def health(db=Depends(session)):
     return {"status": "ok"}
 
 
-for router in (auth.api, claims.api, documents.api, analysis.api, samples.api):
+for router in (auth.api, claims.api, documents.api, analysis.api, samples.api, evidence.api):
     app.include_router(router, prefix="/api/v1")

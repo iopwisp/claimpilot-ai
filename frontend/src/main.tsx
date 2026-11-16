@@ -133,6 +133,13 @@ function Auth({ done }: { done: (a: Account) => void }) {
     </main>
   );
 }
+type QueueItem = {
+  id: string;
+  claim_id: string;
+  claim_number: string;
+  item: string;
+  status: string;
+};
 function App() {
   const sessionGeneration = React.useRef(0);
   const [user, setUser] = useState<Account | null>(null),
@@ -140,6 +147,7 @@ function App() {
     [selected, select] = useState(""),
     [claims, setClaims] = useState<Claim[]>([]),
     [docs, setDocs] = useState(0),
+    [queue, setQueue] = useState<QueueItem[]>([]),
     [error, setError] = useState(""),
     [create, setCreate] = useState(false),
     [samples, setSamples] = useState(false),
@@ -155,6 +163,7 @@ function App() {
       select("");
       setClaims([]);
       setDocs(0);
+      setQueue([]);
       setCreate(false);
       setSamples(false);
       setView("Overview");
@@ -170,11 +179,14 @@ function App() {
     const session = sessionGeneration.current;
     const [list, metrics] = await Promise.all([
       request<Claim[]>("/claims"),
-      request<{ documents_processing: number }>("/dashboard"),
+      request<{ documents_processing: number; evidence_queue: QueueItem[] }>(
+        "/dashboard",
+      ),
     ]);
     if (session !== sessionGeneration.current) return;
     setClaims(list);
     setDocs(metrics.documents_processing);
+    setQueue(metrics.evidence_queue);
   }
   useEffect(() => {
     if (!user) return;
@@ -278,6 +290,7 @@ function App() {
                 sessionGeneration.current++;
                 setClaims([]);
                 setDocs(0);
+                setQueue([]);
                 setError("");
                 setUser(null);
                 select("");
@@ -364,6 +377,30 @@ function App() {
                     </div>
                   ))}
                 </div>
+              )}
+              {view === "Overview" && queue.length > 0 && (
+                <section className="panel">
+                  <h2>Evidence awaiting your action</h2>
+                  {queue.map((t) => (
+                    <div key={t.id} className="item">
+                      <span className="grow">
+                        {t.item}
+                        <small>
+                          {t.status === "OPEN"
+                            ? "Document needed"
+                            : "Ready for reviewer"}
+                        </small>
+                      </span>
+                      <button
+                        className="link"
+                        onClick={() => select(t.claim_id)}
+                      >
+                        {t.claim_number}
+                        <ChevronRight size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </section>
               )}
               <section className="panel">
                 <div className="panelhead">

@@ -11,6 +11,7 @@ from app.workflow import COMPARED_FIELDS, facts_for, field_issues, normalized, r
 
 
 from .access import CLAIM, audit, claim_access, editable, dispatch
+from .evidence import ACTIVE, EvidenceRequest
 
 api = APIRouter(tags=["analysis"])
 
@@ -120,6 +121,12 @@ def review(cid: str, body: Review, auth=Depends(identity), db=Depends(session)):
     elif body.action == "comment" and not body.value.strip():
         raise HTTPException(422, "Enter a comment")
     elif body.action == "complete":
+        if db.scalar(
+            select(EvidenceRequest.id)
+            .where(EvidenceRequest.claim_id == cid, EvidenceRequest.status.in_(ACTIVE))
+            .limit(1)
+        ):
+            raise HTTPException(409, "Resolve outstanding evidence requests before completing review")
         claim.status = "COMPLETED"
         db.query(Inconsistency).filter_by(analysis_id=claim.job_id).update({"review_status": "REVIEWED"})
     audit(
