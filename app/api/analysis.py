@@ -5,9 +5,9 @@ from sqlalchemy import select
 from app.ai.provider import provider
 from app.db import Analysis, Audit, Document, Field, Inconsistency, session, uid
 from app.documents import search_policy
-from app.schemas import Review
+from app.schemas import ClaimInput, Review
 from app.security import identity
-from app.workflow import row
+from app.workflow import COMPARED_FIELDS, facts_for, field_issues, normalized, row
 
 
 from .access import CLAIM, audit, claim_access, editable, dispatch
@@ -34,12 +34,43 @@ def analyze_claim(cid: str, auth=Depends(identity), db=Depends(session)):
 def report(cid: str, auth=Depends(identity), db=Depends(session)):
     claim = claim_access(db, auth[0], cid)
     a = db.get(Analysis, claim.job_id) if claim.job_id else None
-    return {
+    result = {
         "job_id": claim.job_id,
         "status": claim.status,
         "report": a.result if a else None,
         "model": a.model if a else None,
     }
+    if a:
+        facts = facts_for(db, cid)
+        initial = a.result["inconsistencies"]
+        current = field_issues(claim, facts)
+        active_keys = {(item["field"], item["type"]) for item in current}
+        resolved = [
+            item
+            for item in initial
+            if item["field"] in COMPARED_FIELDS and (item["field"], item["type"]) not in active_keys
+        ]
+        current.extend(item for item in initial if item["field"] not in COMPARED_FIELDS)
+        result.update(
+            prompt_version=a.prompt_version,
+            analyzed_at=a.created_at,
+            review={
+                "fields": facts,
+                "current_issues": current,
+                "resolved_issues": resolved,
+                "reviewed_fields": sum(f["review"] != "UNREVIEWED" for f in facts),
+                "actions": [
+                    row(event, "action entity_id user_id details created_at")
+                    for event in db.scalars(
+                        select(Audit)
+                        .where(Audit.claim_id == cid, Audit.action.startswith("review."))
+                        .order_by(Audit.created_at)
+                    )
+                    if event.details.get("job_id") == a.id
+                ],
+            },
+        )
+    return result
 
 
 class Question(BaseModel):
@@ -62,6 +93,8 @@ def review(cid: str, body: Review, auth=Depends(identity), db=Depends(session)):
         raise HTTPException(403)
     if claim.status not in ("NEEDS_REVIEW", "READY_FOR_REVIEW"):
         raise HTTPException(409, "Analysis required before review")
+    if body.analysis_id is not None and body.analysis_id != claim.job_id:
+        raise HTTPException(409, "This report was replaced. Refresh the case before reviewing it.")
     if body.action in ("correct_field", "accept_field"):
         field = db.scalar(
             select(Field).join(Document).where(Field.id == body.target, Document.claim_id == cid)
@@ -69,6 +102,15 @@ def review(cid: str, body: Review, auth=Depends(identity), db=Depends(session)):
         if not field or (body.action == "correct_field" and not body.value.strip()):
             raise HTTPException(422, "Field and correction required")
         if body.action == "correct_field":
+            value = body.value.strip()
+            if field.name in ("incident_date", "claim_amount"):
+                value = normalized(field.name, value)
+            try:
+                ClaimInput.model_validate(
+                    {**{k: getattr(claim, k) for k in ClaimInput.model_fields}, field.name: value}
+                )
+            except ValueError:
+                raise HTTPException(422, "Invalid correction for " + field.name.replace("_", " "))
             field.corrected = body.value.strip()
         field.review = "CORRECTED" if field.corrected else "ACCEPTED"
     elif body.action == "reject_recommendation":

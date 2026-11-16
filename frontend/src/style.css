@@ -649,3 +649,122 @@ dialog[open] {
     padding: 8px;
   }
 }
+.caseActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.sampleChoices {
+  display: grid;
+  gap: 10px;
+  border: 0;
+  padding: 0;
+}
+.sampleChoices label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #d4ded5;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.sampleChoices label:has(input:checked) {
+  background: #edf3e7;
+  border-color: #588263;
+}
+.sampleChoices input {
+  accent-color: #245949;
+}
+.sampleChoices small {
+  margin-top: 4px;
+  line-height: 1.45;
+}
+.reviewStats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: #dce5da;
+  border: 1px solid #dce5da;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.reviewStats div {
+  background: #f4f7f1;
+  padding: 14px;
+}
+.reviewStats strong {
+  font:
+    26px Georgia,
+    serif;
+  display: block;
+  margin-bottom: 5px;
+}
+.resolved {
+  margin: 14px 0;
+  padding: 12px;
+  background: #edf4e9;
+  border-radius: 6px;
+}
+.resolved summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.resolved .link {
+  display: block;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+@media (max-width: 580px) {
+  .reviewStats div {
+    padding: 8px;
+  }
+  .caseActions {
+    justify-content: flex-end;
+  }
+  .heading:has(.caseActions) {
+    align-items: start;
+    flex-wrap: wrap;
+  }
+}
+.inspection {
+  display: grid;
+  align-items: start;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+}
+.inspection:has(.inspector) {
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 28%);
+}
+.inspection img {
+  width: 100%;
+  border: 1px solid #dbe2d9;
+}
+.inspector {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  background: #f5f7f2;
+  padding: 14px;
+  border-radius: 8px;
+}
+.inspector .inline {
+  margin: 4px 0 0;
+}
+.inspector input {
+  width: 100%;
+}
+@media (max-width: 580px) {
+  .inspection:has(.inspector) {
+    grid-template-columns: 1fr;
+  }
+  .inspector {
+    grid-row: 1;
+  }
+}

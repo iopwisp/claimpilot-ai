@@ -62,8 +62,10 @@ def run(kind, entity, job):
             db.commit()
         except Exception as error:
             db.rollback()
-            obj = db.get(Document if kind == "document" else Claim, entity)
-            if obj and (kind == "document" or obj.job_id == job):
+            model = Document if kind == "document" else Claim
+            obj = db.scalar(select(model).where(model.id == entity).with_for_update())
+            pending = "QUEUED" if kind == "document" else "PROCESSING"
+            if obj and obj.status == pending and (kind == "document" or obj.job_id == job):
                 obj.status = "FAILED"
                 db.add(
                     Audit(

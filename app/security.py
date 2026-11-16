@@ -4,13 +4,14 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 from argon2 import PasswordHasher
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer
 
 from .db import Login, STATE, User, session
 
 hasher = PasswordHasher()
-bearer = HTTPBearer()
+bearer = HTTPBearer(auto_error=False)
+COOKIE = "claimpilot_session"
 
 
 def signing_key():
@@ -38,10 +39,19 @@ def token(login):
     )
 
 
-def identity(raw=Depends(bearer), db=Depends(session)):
+def identity(request: Request, raw=Depends(bearer), db=Depends(session)):
+    credential = raw.credentials if raw else request.cookies.get(COOKIE)
+    if not credential:
+        raise HTTPException(401, "Sign in required")
+    if (
+        not raw
+        and request.method not in {"GET", "HEAD", "OPTIONS"}
+        and request.headers.get("X-ClaimPilot-Request") != "browser"
+    ):
+        raise HTTPException(403, "Missing same-origin request header")
     try:
         payload = jwt.decode(
-            raw.credentials,
+            credential,
             signing_key(),
             algorithms=["HS256"],
             options={"require": ["exp", "sub", "jti"]},

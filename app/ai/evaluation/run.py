@@ -1,6 +1,7 @@
 """Run against isolated SQLite storage. The configured provider controls inference."""
 
 import json
+import argparse
 import os
 import tempfile
 from collections import Counter
@@ -9,7 +10,7 @@ from unittest.mock import patch
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
-from app.ai.provider import VERSION, provider
+from app.ai.provider import VERSION, LocalProvider, provider
 from app.db import Base, Claim, Document, Field, User
 from app.documents import path_for, process, rank_policy, validate
 from app.schemas import ClaimInput, Extraction
@@ -50,6 +51,7 @@ def run():
                 db.add(claim)
                 db.flush()
                 truth = case["ground_truth"]
+                policy_ids = set()
                 for filename, source in case["documents"].items():
                     data = pdf_bytes(source["pages"])
                     doc = Document(
@@ -61,6 +63,8 @@ def run():
                     db.add(doc)
                     db.flush()
                     path_for(doc).write_bytes(data)
+                    if source["kind"] == "INSURANCE_POLICY":
+                        policy_ids.add(doc.id)
                     process(db, doc, ai)
                     db.flush()
                     confusion[source["kind"], doc.kind] += 1
@@ -84,7 +88,14 @@ def run():
                 expected_page = truth["policy_page"]
                 if expected_page:
                     totals["queries"] += 1
-                    totals["retrieved"] += int(any(h["page"] == expected_page for h in hits))
+                    totals["retrieved"] += int(
+                        any(
+                            h["document_id"] in policy_ids
+                            and h["page"] == expected_page
+                            and truth["policy_quote"] in h["text"]
+                            for h in hits
+                        )
+                    )
                 else:
                     totals["insufficient"] += 1
                     totals["abstained"] += int(not report["policy"]["evidence"])
@@ -98,7 +109,9 @@ def run():
                         "issues_match": issues == truth["issues"],
                         "missing_match": missing == truth["missing"],
                         "policy_citation_match": any(
-                            h["page"] == expected_page and truth["policy_quote"] in h["quote"]
+                            h["document_id"] in policy_ids
+                            and h["page"] == expected_page
+                            and truth["policy_quote"] in h["quote"]
                             for h in report["policy"]["evidence"]
                         )
                         if expected_page
@@ -123,7 +136,7 @@ def run():
     payload = {
         "model": ai.model,
         "prompt": VERSION,
-        "temperature": 0 if ai.model != "local-rules-v1" else None,
+        "temperature": None if isinstance(ai, LocalProvider) else 0,
         "metrics": metrics,
         "counts": totals,
         "cases": results,
@@ -147,7 +160,32 @@ def run():
     ]
     (out / "REPORT.md").write_text("\n".join(summary) + "\n")
     print("\n".join(summary))
+    return payload
+
+
+def check(result):
+    targets = {
+        "structured_extraction_exact_match": 0.90,
+        "document_classification_macro_f1": 0.85,
+        "retrieval_recall_at_5": 0.85,
+        "structured_output_validity": 0.99,
+        "source_citation_correctness": 0.95,
+        "insufficient_evidence_accuracy": 1.0,
+    }
+    failed = [key for key, target in targets.items() if result["metrics"][key] < target]
+    for key in ("issues_match", "missing_match", "policy_citation_match"):
+        if not all(case[key] for case in result["cases"]):
+            failed.append(key)
+    if failed:
+        raise SystemExit("Quality targets missed: " + ", ".join(failed))
 
 
 if __name__ == "__main__":
-    run()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--check", action="store_true", help="Fail if the fixture regression targets are missed"
+    )
+    args = parser.parse_args()
+    result = run()
+    if args.check:
+        check(result)

@@ -53,7 +53,7 @@ def test_claim_lifecycle(client, index):
     assert (
         client.post(route + "/review", headers=handler, json={"action": "complete"}).status_code == 403
     )
-    target = result["extracted_fields"][0]["id"]
+    target = next(f["id"] for f in result["extracted_fields"] if f["name"] == "claimant_name")
     for body in [
         {"action": "correct_field", "target": target, "value": "Verified correction"},
         {"action": "comment", "value": "Compared source."},

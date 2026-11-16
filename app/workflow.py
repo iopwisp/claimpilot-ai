@@ -1,4 +1,5 @@
 import json
+import re
 from collections import defaultdict
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
@@ -34,8 +35,20 @@ def facts_for(db, claim_id):
 def normalized(field, value):
     text = str(value).strip().casefold()
     if field == "claim_amount":
+        # Keep unsupported formatting distinct rather than silently changing the amount.
+        amount = text.replace("\u00a0", " ").replace("\u202f", " ")
+        if re.fullmatch(r"[0-9]{1,3}( [0-9]{3})+([.,][0-9]{1,2})?", amount):
+            amount = amount.replace(" ", "")
+        if re.fullmatch(r"[0-9]{1,3}(,[0-9]{3})+(\.[0-9]{1,2})?", amount):
+            amount = amount.replace(",", "")
+        elif re.fullmatch(r"[0-9]{1,3}(\.[0-9]{3})+,[0-9]{1,2}", amount):
+            amount = amount.replace(".", "").replace(",", ".")
+        elif re.fullmatch(r"[0-9]+,[0-9]{1,2}", amount):
+            amount = amount.replace(",", ".")
+        if not re.fullmatch(r"[0-9]+(\.[0-9]+)?", amount):
+            return text
         try:
-            return Decimal(text.replace(",", ""))
+            return Decimal(amount)
         except InvalidOperation:
             return text
     if field == "incident_date":
@@ -51,70 +64,85 @@ def normalized(field, value):
     return " ".join(text.split())
 
 
-def compare(claim, docs, facts, ai):
-    issues = []
+def finding(kind, field, values, description):
+    return dict(
+        type=kind,
+        severity="MEDIUM",
+        field=field,
+        values=values,
+        description=description,
+        requires_review=True,
+    )
 
-    def issue(kind, field, values, description):
-        issues.append(
-            dict(
-                type=kind,
-                severity="MEDIUM",
-                field=field,
-                values=values,
-                description=description,
-                requires_review=True,
-            )
-        )
+
+COMPARED_FIELDS = {
+    "incident_date": "DATE_MISMATCH",
+    "claim_amount": "AMOUNT_MISMATCH",
+    "policy_number": "INVALID_POLICY_NUMBER",
+    "claimant_name": "INCONSISTENT_CLAIM_DETAILS",
+    "currency": "INCONSISTENT_CLAIM_DETAILS",
+}
+
+
+def field_issues(claim, facts):
+    issues = []
 
     grouped = defaultdict(list)
     for fact in facts:
         grouped[fact["name"]].append(fact)
-    for field, kind in {
-        "incident_date": "DATE_MISMATCH",
-        "claim_amount": "AMOUNT_MISMATCH",
-        "policy_number": "INVALID_POLICY_NUMBER",
-        "claimant_name": "INCONSISTENT_CLAIM_DETAILS",
-        "currency": "INCONSISTENT_CLAIM_DETAILS",
-    }.items():
+    for field, kind in COMPARED_FIELDS.items():
         sources = grouped[field]
         if not sources:
-            issue(
-                "MISSING_INFORMATION",
-                field,
-                [],
-                f"Verify {field.replace('_', ' ')} against a source document.",
+            issues.append(
+                finding(
+                    "MISSING_INFORMATION",
+                    field,
+                    [],
+                    f"Verify {field.replace('_', ' ')} against a source document.",
+                )
             )
             continue
         baseline = str(getattr(claim, field))
         observed = {normalized(field, item["corrected"] or item["value"]) for item in sources}
         if observed - {normalized(field, baseline)}:
-            issue(
-                kind,
-                field,
-                [{"source": "Claim record", "value": baseline}, *sources],
-                f"Submitted values differ for {field.replace('_', ' ')}.",
+            issues.append(
+                finding(
+                    kind,
+                    field,
+                    [{"source": "Claim record", "value": baseline}, *sources],
+                    f"Submitted values differ for {field.replace('_', ' ')}.",
+                )
             )
+    return issues
+
+
+def compare(claim, docs, facts, ai):
+    issues = field_issues(claim, facts)
     seen = {}
     for doc in docs:
         if doc.digest in seen:
-            issue(
-                "DUPLICATE_DOCUMENT",
-                "file",
-                [seen[doc.digest], row(doc, "id filename")],
-                "Two uploaded files have identical contents.",
+            issues.append(
+                finding(
+                    "DUPLICATE_DOCUMENT",
+                    "file",
+                    [seen[doc.digest], row(doc, "id filename")],
+                    "Two uploaded files have identical contents.",
+                )
             )
         seen[doc.digest] = row(doc, "id filename")
-    descriptions = grouped["incident_description"]
+    descriptions = [f for f in facts if f["name"] == "incident_description"]
     if len(descriptions) > 1:
         for pair in ai.conflicts(descriptions):
             if 0 <= pair.first < len(descriptions) and 0 <= pair.second < len(descriptions):
                 a, b = descriptions[pair.first], descriptions[pair.second]
                 if a["document_id"] != b["document_id"]:
-                    issue(
-                        "INCONSISTENT_CLAIM_DETAILS",
-                        "incident_description",
-                        [a, b],
-                        "Incident descriptions need reconciliation.",
+                    issues.append(
+                        finding(
+                            "INCONSISTENT_CLAIM_DETAILS",
+                            "incident_description",
+                            [a, b],
+                            "Incident descriptions need reconciliation.",
+                        )
                     )
     return issues
 
@@ -135,6 +163,17 @@ def checklist(docs, claim, police_report="conditional"):
             )
         )
         items.append(dict(name=name, status=status))
+        if (
+            name == "Damage evidence"
+            and status == "MISSING"
+            and any(
+                d.status == "READY"
+                and d.mime.startswith("image/")
+                and d.metadata_json.get("classification_requires_review")
+                for d in docs
+            )
+        ):
+            items[-1]["status"] = "REQUIRES_CONFIRMATION"
     items.append(
         dict(
             name="Incident description",

@@ -48,6 +48,9 @@ def dispatch(db, kind, obj, job):
     try:
         enqueue(kind, obj.id, job)
     except Exception:
-        obj.status = "FAILED"
-        db.commit()
+        db.refresh(obj, with_for_update=True)
+        pending = "QUEUED" if kind == "document" else "PROCESSING"
+        if obj.status == pending and (kind == "document" or obj.job_id == job):
+            obj.status = "FAILED"
+            db.commit()
         raise HTTPException(503, "Queue unavailable. Retry when the worker is available.")

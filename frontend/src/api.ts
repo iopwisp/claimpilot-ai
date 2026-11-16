@@ -4,6 +4,7 @@ export interface Account {
   role: string;
 }
 export interface Claim {
+  reviewer_email?: string | null;
   id: string;
   claim_number: string;
   policy_number: string;
@@ -28,7 +29,10 @@ export interface Fact {
   review: string;
 }
 export interface Doc {
-  metadata_json: { page_count?: number };
+  metadata_json: {
+    page_count?: number;
+    classification_requires_review?: boolean;
+  };
   id: string;
   filename: string;
   kind: string;
@@ -59,6 +63,21 @@ export interface Event {
   created_at: string;
   details: { value?: string; job_id?: string };
 }
+export interface ReviewResult {
+  job_id: string;
+  status: string;
+  model: string | null;
+  analyzed_at?: string;
+  prompt_version?: string;
+  report: Report | null;
+  review?: {
+    fields: Fact[];
+    reviewed_fields: number;
+    current_issues: Report["inconsistencies"];
+    resolved_issues: Report["inconsistencies"];
+    actions: Event[];
+  };
+}
 export const statuses = [
   "DRAFT",
   "PROCESSING",
@@ -84,7 +103,7 @@ export async function request<T>(
 ): Promise<T> {
   const form = data instanceof FormData;
   const headers: Record<string, string> = {
-    Authorization: "Bearer " + (sessionStorage.getItem("token") || ""),
+    "X-ClaimPilot-Request": "browser",
   };
   if (!form && data !== undefined) headers["Content-Type"] = "application/json";
   const response = await fetch("/api/v1" + path, {
@@ -93,6 +112,9 @@ export async function request<T>(
     body: form ? data : data === undefined ? undefined : JSON.stringify(data),
   });
   const result = await response.json();
+  if (response.status === 401 && !path.startsWith("/auth/")) {
+    window.dispatchEvent(new Event("claimpilot-session-ended"));
+  }
   if (!response.ok)
     throw Error(
       typeof result.detail === "string"

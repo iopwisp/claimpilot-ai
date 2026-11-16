@@ -68,7 +68,12 @@ def create(body: ClaimInput, auth=Depends(identity), db=Depends(session)):
 @api.get("/claims/{cid}")
 def details(cid: str, auth=Depends(identity), db=Depends(session)):
     claim = claim_access(db, auth[0], cid)
-    return {**row(claim, CLAIM), "fields": facts_for(db, cid)}
+    reviewer = db.get(User, claim.reviewer_id) if claim.reviewer_id else None
+    return {
+        **row(claim, CLAIM),
+        "fields": facts_for(db, cid),
+        "reviewer_email": reviewer.email if reviewer else None,
+    }
 
 
 @api.patch("/claims/{cid}")

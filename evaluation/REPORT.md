@@ -1,6 +1,6 @@
 # Evaluation report
 
-Provider: local-rules-v1. Prompt: 2026-11-v1. Cases: 50.
+Provider: local-rules-v2. Prompt: 2026-11-v2. Cases: 50.
 
 | Metric | Observed |
 |---|---:|

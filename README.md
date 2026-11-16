@@ -18,6 +18,12 @@ The default provider runs offline. The first launch creates a database password,
 
 ### Walk through a claim
 
+For a staff-only workspace set `ALLOW_REGISTRATION=0` and provision accounts with `docker compose exec backend python -m app.manage handler user@example.invalid`. Compose uses a separate database owner for migrations. The API and worker use a restricted role with append-only access to audit history. Python dependencies are pinned with hashes in `requirements.lock`.
+
+The browser signs in with an eight-hour HttpOnly, SameSite=Strict cookie. Session tokens from the earlier browser version require a fresh sign-in. Role changes revoke active sessions. For an HTTPS installation set `COOKIE_SECURE=1`. JSON API clients can still use bearer tokens. The web entry point limits login and registration attempts per client IP.
+
+For a quick demonstration, register a handler and choose **Sample cases → Conflicting incident dates → Import sample**. Wait for the four PDFs to finish processing and select **Analyze claim**. Open either cited page from the date discrepancy to compare the source with the extracted value. The other samples demonstrate a complete file and missing damage evidence.
+
 1. Register a handler. Create a claim with the values in one of the scenario folders below.
 2. Upload the PDFs in that folder. Wait for their status to become **Ready**, then choose **Analyze claim**.
 3. Open **Review report** to inspect discrepancies, the materials checklist and cited policy passages. Select a filename in **Extracted data** to see the original page alongside its quote.
@@ -63,7 +69,7 @@ flowchart LR
 - **Verification.** Python compares dates, amounts, policy numbers, currencies and names, detects duplicate files by digest, and checks configured supporting materials. In OpenAI mode the provider also examines incident descriptions for semantic conflicts.
 - **Policy search.** Policies are indexed as overlapping, page-preserving chunks. PostgreSQL ranks chunks by cosine distance within the authorized claim. The provider selects an exact excerpt from the top five passages or returns insufficient evidence.
 - **Workflow.** Six allowlisted tools run in a fixed order. The service binds the claim and database session, validates typed tool outputs and saves a versioned report. Model calls accept no user IDs, paths or SQL. Source documents are untrusted model input. Failed document jobs support retry. Analysis can be rerun before completion. Previous analyses and audit events persist.
-- **Human review.** Extracted facts retain original values alongside corrections. The stored analysis describes the evidence at analysis time. The extracted-data view and audit trail record subsequent reviewer actions.
+- **Human review.** An assigned reviewer can correct a field alongside the source page. Amounts and dates are validated, and field discrepancies are recalculated against the claim record. The report separates current findings from discrepancies resolved by corrections and preserves the original analysis. Export the case as a text report with original and corrected values, page references, review history and model version.
 
 ### Providers
 
@@ -79,7 +85,7 @@ To enable the external provider, copy `.env.example` to `.env`, set `AI_PROVIDER
 Use Python 3.11+, Node 22+ and Tesseract on PATH for image and scanned-page OCR. In a virtual environment install dependencies and run the API from the repository root:
 
 ```sh
-python -m pip install -r requirements.txt
+python -m pip install --require-hashes -r requirements.lock
 python -m uvicorn app.main:app --port 8000
 ```
 
@@ -95,10 +101,16 @@ Open [the development workspace](http://localhost:5173). Without infrastructure 
 
 ## Quality and reproducibility
 
+### Backup and recovery
+
+From the repository root, run `python ops/recovery.py backup apq /private/backups/claimpilot-001` with an unused destination directory. Supply your actual Compose project name. The command briefly stops the API and worker, saves PostgreSQL data and original documents together, and restarts the services. The archive contains confidential material and password hashes. Store it on an access-controlled encrypted volume.
+
+Use `python ops/recovery.py restore claimpilot-recovered /private/backups/claimpilot-001` with a fresh project name and a trusted backup. Recovery verifies archive checksums, restores into separate volumes, provisions fresh service credentials and verifies every document against its database digest. Browser sessions require a new login. After inspecting the recovered stack, set an available `WEB_PORT` and run `docker compose -p claimpilot-recovered up -d frontend` to open it.
+
 ```sh
 python -m pytest -q
 ruff check app tests
-python -m app.ai.evaluation.run
+python -m app.ai.evaluation.run --check
 cd frontend
 npm ci
 npm test

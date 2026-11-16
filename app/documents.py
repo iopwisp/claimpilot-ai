@@ -1,5 +1,6 @@
 import hashlib
 import io
+import os
 import re
 from collections import Counter
 from pathlib import Path
@@ -51,6 +52,8 @@ def validate(data, filename, mime):
             with pymupdf.open(stream=data, filetype="pdf") as pdf:
                 if not data.startswith(b"%PDF-") or not 1 <= len(pdf) <= 50 or pdf.needs_pass:
                     raise ValueError()
+                if any(max(p.rect.width, p.rect.height) > 20000 or p.rect.is_empty for p in pdf):
+                    raise ValueError()
         else:
             with Image.open(io.BytesIO(data)) as img:
                 if img.format != ("PNG" if ext == ".png" else "JPEG") or img.width * img.height > PIXELS:
@@ -65,7 +68,7 @@ def pages(doc):
     path = path_for(doc)
     if doc.mime != "application/pdf":
         with Image.open(path) as image:
-            return [pytesseract.image_to_string(ImageOps.exif_transpose(image))], [1]
+            return [ocr_text(ImageOps.exif_transpose(image))], [1]
     result, scanned = [], []
     with pymupdf.open(path) as pdf:
         for index, page in enumerate(pdf):
@@ -74,12 +77,14 @@ def pages(doc):
                 if page.rect.get_area() * 4 > PIXELS:
                     raise ValueError("Page too large")
                 pix = page.get_pixmap(matrix=pymupdf.Matrix(2, 2), colorspace=pymupdf.csRGB, alpha=False)
-                text = pytesseract.image_to_string(
-                    Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-                )
+                text = ocr_text(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
                 scanned.append(index + 1)
             result.append(text)
     return result, scanned
+
+
+def ocr_text(image):
+    return pytesseract.image_to_string(image, lang=os.getenv("OCR_LANGUAGES", "eng"), timeout=45)
 
 
 def index_policy(db, doc, ai):
@@ -123,12 +128,13 @@ def process(db, doc, ai=None):
                         )
                     )
     votes = Counter(kind for kind in kinds if kind != "OTHER")
-    doc.kind = (
-        votes.most_common(1)[0][0]
-        if votes
-        else ("PHOTOGRAPH" if doc.mime.startswith("image/") and not any(doc.pages) else "OTHER")
-    )
-    doc.metadata_json = {"page_count": len(texts), "ocr_pages": ocr, "model": ai.model}
+    doc.kind = votes.most_common(1)[0][0] if votes else "OTHER"
+    doc.metadata_json = {
+        "page_count": len(texts),
+        "ocr_pages": ocr,
+        "model": ai.model,
+        "classification_requires_review": doc.kind == "OTHER",
+    }
     index_policy(db, doc, ai)
     doc.status = "READY"
 

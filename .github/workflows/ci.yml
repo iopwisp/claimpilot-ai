@@ -9,12 +9,16 @@ jobs:
         with: {python-version: '3.11'}
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
-      - run: pip install -r requirements.txt
+      - run: pip install --require-hashes -r requirements.lock
+      - run: pipx run pip-audit --no-deps --disable-pip -r requirements.lock
       - run: ruff check app tests && python -m pytest -q
-      - run: npm ci && npm test && npm run build
+      - run: npm ci && npm audit && npm test && npm run build
         working-directory: frontend
-      - run: python -m app.ai.evaluation.run
+      - run: python -m app.ai.evaluation.run --check
       - run: docker compose up -d --build --wait
+      - name: Verify database privilege boundaries
+        run: |
+          docker compose exec -T backend python -c "from app.db import engine; from sqlalchemy import text; c=engine.connect(); assert c.execute(text(\"select current_user = 'claimpilot_app' and not rolsuper and not has_table_privilege(current_user,'audit_logs','DELETE') and not has_table_privilege(current_user,'audit_logs','UPDATE') and not has_schema_privilege(current_user,'public','CREATE') from pg_roles where rolname=current_user\")).scalar_one()"
       - name: Exercise PostgreSQL, pgvector and Celery through the browser
         env:
           E2E_URL: http://127.0.0.1:8080

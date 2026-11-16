@@ -38,6 +38,7 @@ class Extraction(BaseModel):
 
 
 class Review(BaseModel):
+    analysis_id: str | None = Field(default=None, max_length=64)
     action: Literal["accept_field", "correct_field", "reject_recommendation", "comment", "complete"]
     target: str = Field(default="", max_length=100)
     value: str = Field(default="", max_length=3000)

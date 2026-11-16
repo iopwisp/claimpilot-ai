@@ -26,7 +26,8 @@ if os.getenv("DATABASE_PASSWORD_FILE"):
     from urllib.parse import quote_plus
 
     password = Path(os.environ["DATABASE_PASSWORD_FILE"]).read_text().strip()
-    URL = f"postgresql+psycopg://pilot:{quote_plus(password)}@postgres/claims"
+    username = quote_plus(os.getenv("DATABASE_USER", "pilot"))
+    URL = f"postgresql+psycopg://{username}:{quote_plus(password)}@postgres/claims"
 engine = create_engine(URL, pool_pre_ping=True)
 if engine.dialect.name == "sqlite":
 

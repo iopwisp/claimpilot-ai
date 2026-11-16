@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.ai.provider import provider
 from app.db import Document, session, uid
@@ -22,23 +22,35 @@ api = APIRouter(tags=["documents"])
 def upload(cid: str, file: UploadFile = File(...), auth=Depends(identity), db=Depends(session)):
     claim = claim_access(db, auth[0], cid, True)
     editable(claim, auth[0])
-    data = file.file.read(LIMIT + 1)
-    name = Path((file.filename or "").replace("\\", "/")).name[:250]
-    digest = validate(data, name, file.content_type)
-    doc = Document(id=uid(), claim_id=cid, filename=name, mime=file.content_type, digest=digest)
-    path = path_for(doc)
-    path.write_bytes(data)
-    db.add(doc)
+    count = db.scalar(select(func.count(Document.id)).where(Document.claim_id == cid))
+    if count >= 100:
+        raise HTTPException(409, "A claim can contain up to 100 documents")
+    doc = stage_document(db, claim, auth[0], file.filename, file.content_type, file.file.read(LIMIT + 1))
     reset(claim)
-    audit(db, auth[0], "document.upload", cid, doc.id)
     try:
         dispatch(db, "document", doc, uid())
     except HTTPException:
         raise
     except Exception:
-        path.unlink(missing_ok=True)
+        path_for(doc).unlink(missing_ok=True)
         raise
     return row(doc, DOC)
+
+
+def stage_document(db, claim, user, filename, mime, data):
+    name = Path((filename or "").replace("\\", "/")).name[:250]
+    doc = Document(
+        id=uid(), claim_id=claim.id, filename=name, mime=mime, digest=validate(data, name, mime)
+    )
+    path = path_for(doc)
+    try:
+        path.write_bytes(data)
+        db.add(doc)
+        audit(db, user, "document.upload", claim.id, doc.id)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    return doc
 
 
 @api.get("/claims/{cid}/documents")
@@ -67,7 +79,7 @@ def source(cid: str, did: str, auth=Depends(identity), db=Depends(session)):
         path_for(doc),
         media_type=doc.mime,
         filename=doc.filename,
-        content_disposition_type="inline",
+        content_disposition_type="attachment",
         headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
     )
 
@@ -94,6 +106,11 @@ def classify(cid: str, did: str, body: Classification, auth=Depends(identity), d
     if doc.status != "READY":
         raise HTTPException(409)
     doc.kind = body.kind
+    doc.metadata_json = {
+        **doc.metadata_json,
+        "classification_requires_review": False,
+        "classified_by": "human",
+    }
     index_policy(db, doc, provider())
     reset(claim)
     audit(db, auth[0], "document.classify", cid, did, body.model_dump())

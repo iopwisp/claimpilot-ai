@@ -1,24 +1,19 @@
-import { useEffect, useState } from "react";
-import {
-  ArrowRight,
-  ExternalLink,
-  FileText,
-  Play,
-  Upload,
-  X,
-} from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { downloadReport } from "./exportReport";
+import { ArrowRight, ExternalLink, FileText, Play, Upload } from "lucide-react";
 import {
   Account,
   Claim,
   Coverage,
   Doc,
   Event,
+  Fact,
   label,
   money,
-  Report,
+  ReviewResult,
   request,
 } from "./api";
-import { Badge, Modal } from "./main";
+import { Badge, Modal } from "./shared";
 import { ClaimFormFields } from "./ClaimFormFields";
 const kinds = [
   "CLAIM_FORM",
@@ -41,7 +36,7 @@ export function CaseFile({
   const base = "/claims/" + id;
   const [claim, setClaim] = useState<Claim>(),
     [docs, setDocs] = useState<Doc[]>([]),
-    [report, setReport] = useState<Report | null>(null),
+    [result, setResult] = useState<ReviewResult>(),
     [events, setEvents] = useState<Event[]>([]),
     [job, setJob] = useState(""),
     [tab, setTab] = useState("Documents"),
@@ -52,6 +47,7 @@ export function CaseFile({
       id: string;
       page: number;
       count: number;
+      fieldId?: string;
       quote: string;
       name: string;
     }>(),
@@ -59,23 +55,31 @@ export function CaseFile({
     [confirmDelete, setDelete] = useState(false),
     [editing, setEditing] = useState(false);
   async function load() {
+    const sequence = ++latest.current;
     const [c, d, r, a] = await Promise.all([
       request<Claim>(base),
       request<Doc[]>(base + "/documents"),
-      request<{ report: Report | null; job_id: string }>(base + "/report"),
+      request<ReviewResult>(base + "/report"),
       request<Event[]>(base + "/audit"),
     ]);
+    if (sequence !== latest.current) return;
     setClaim(c);
     setDocs(d);
-    setReport(r.report);
+    setResult(r);
     setJob(r.job_id);
     setEvents(a);
   }
+  const latest = useRef(0);
+  const report = result?.report;
+  const reviewed = result?.review;
   useEffect(() => {
     const update = () => load().catch((e) => err(e.message));
     update();
     const t = setInterval(update, 2500);
-    return () => clearInterval(t);
+    return () => {
+      clearInterval(t);
+      latest.current++;
+    };
   }, [id]);
   useEffect(
     () => () => {
@@ -95,12 +99,12 @@ export function CaseFile({
       setBusy(false);
     }
   }
-  async function open(did: string, page = 1, quote = "") {
+  async function open(did: string, page = 1, quote = "", fieldId?: string) {
     try {
       const res = await fetch(
         "/api/v1" + base + "/documents/" + did + "/pages/" + page,
         {
-          headers: { Authorization: "Bearer " + sessionStorage.token },
+          credentials: "same-origin",
         },
       );
       if (!res.ok) throw Error("Document unavailable");
@@ -109,6 +113,7 @@ export function CaseFile({
         id: did,
         page,
         count: docs.find((d) => d.id === did)?.metadata_json.page_count || 1,
+        fieldId,
         quote,
         name: docs.find((d) => d.id === did)?.filename || "Document",
       });
@@ -117,7 +122,23 @@ export function CaseFile({
     }
   }
   const review = (action: string, target = "", value = "") =>
-    request(base + "/review", "POST", { action, target, value });
+    request(base + "/review", "POST", {
+      action,
+      target,
+      value,
+      analysis_id: job,
+    });
+  const inspected = claim?.fields?.find((f) => f.id === source?.fieldId);
+  function fieldEditor(f: Fact) {
+    return (
+      <FieldEditor
+        key={f.id}
+        f={f}
+        busy={busy}
+        save={(action, value) => act(() => review(action, f.id, value))}
+      />
+    );
+  }
   if (!claim) return <p>{error || "Loading claim…"}</p>;
   const edit =
     user.role !== "reviewer" &&
@@ -244,6 +265,9 @@ export function CaseFile({
                 <small>{label(d.kind)}</small>
               )}
               <Badge value={d.status} />
+              {d.metadata_json.classification_requires_review && (
+                <small>Confirm document type</small>
+              )}
               {edit && d.status === "FAILED" && (
                 <button
                   onClick={() =>
@@ -296,47 +320,29 @@ export function CaseFile({
                 {label(f.name)} · {label(f.review)}
               </small>
               <b>{f.corrected || f.value}</b>
+              {f.corrected && <small>Originally extracted: {f.value}</small>}
               <button
                 className="link"
-                onClick={() => open(f.document_id, f.page, f.quote)}
+                onClick={() => open(f.document_id, f.page, f.quote, f.id)}
               >
                 {f.filename} · p. {f.page}
                 <ExternalLink size={13} />
               </button>
-              {canReview && (
-                <form
-                  className="inline"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const value = String(
-                      new FormData(e.currentTarget).get("value"),
-                    );
-                    act(() => review("correct_field", f.id, value));
-                  }}
-                >
-                  <input
-                    name="value"
-                    aria-label={"Correct " + f.name}
-                    placeholder="Corrected value"
-                    required
-                  />
-                  <button disabled={busy}>Save correction</button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => act(() => review("accept_field", f.id))}
-                  >
-                    Accept
-                  </button>
-                </form>
-              )}
+              {canReview && fieldEditor(f)}
             </div>
           ))}
         </section>
       )}
       {tab === "Review report" && (
         <section className="panel report">
-          <h2>Review report</h2>
+          <div className="panelhead">
+            <h2>Review report</h2>
+            {result?.review && (
+              <button onClick={() => downloadReport(claim, docs, result)}>
+                Export report
+              </button>
+            )}
+          </div>
           {!report ? (
             <p className="sub">
               {claim.status === "PROCESSING"
@@ -345,6 +351,22 @@ export function CaseFile({
             </p>
           ) : (
             <>
+              <div className="reviewStats">
+                <div>
+                  <strong>{reviewed?.current_issues.length}</strong>
+                  <small>Open findings</small>
+                </div>
+                <div>
+                  <strong>{reviewed?.resolved_issues.length}</strong>
+                  <small>Resolved by correction</small>
+                </div>
+                <div>
+                  <strong>
+                    {reviewed?.reviewed_fields} / {reviewed?.fields.length}
+                  </strong>
+                  <small>Fields reviewed</small>
+                </div>
+              </div>
               <h3>Policy evidence</h3>
               <p>{report.policy.answer}</p>
               {report.policy.evidence.map((h, i) => (
@@ -394,8 +416,8 @@ export function CaseFile({
                 </div>
               )}
               <h3>Cross-document inconsistencies</h3>
-              {report.inconsistencies.length ? (
-                report.inconsistencies.map((v, i) => (
+              {reviewed?.current_issues.length ? (
+                reviewed.current_issues.map((v, i) => (
                   <div className="note" key={i}>
                     <b>{label(v.type)}</b>
                     <p>{v.description}</p>
@@ -404,9 +426,11 @@ export function CaseFile({
                         <button
                           key={j}
                           className="link"
-                          onClick={() => open(f.document_id!, f.page, f.quote)}
+                          onClick={() =>
+                            open(f.document_id!, f.page, f.quote, f.id)
+                          }
                         >
-                          {f.filename} · p. {f.page} · {f.value}
+                          {f.filename} · p. {f.page} · {f.corrected || f.value}
                         </button>
                       ) : (
                         <small key={j}>{f.value || f.filename}</small>
@@ -415,7 +439,33 @@ export function CaseFile({
                   </div>
                 ))
               ) : (
-                <p>No discrepancies found.</p>
+                <p>No open discrepancies.</p>
+              )}
+              {!!reviewed?.resolved_issues.length && (
+                <details className="resolved">
+                  <summary>
+                    Resolved findings ({reviewed.resolved_issues.length})
+                  </summary>
+                  {reviewed.resolved_issues.map((v) => (
+                    <div key={v.type}>
+                      <b>{label(v.type)}</b>
+                      <p>{v.description}</p>
+                      {v.values
+                        .filter((f) => f.document_id)
+                        .map((f) => (
+                          <button
+                            className="link"
+                            key={f.id}
+                            onClick={() =>
+                              open(f.document_id!, f.page, f.quote, f.id)
+                            }
+                          >
+                            {f.filename} · p. {f.page} · {f.value}
+                          </button>
+                        ))}
+                    </div>
+                  ))}
+                </details>
               )}
               <h3>Required materials</h3>
               {report.required_items.map((r) => (
@@ -424,7 +474,7 @@ export function CaseFile({
                   <Badge value={r.status} />
                 </div>
               ))}
-              <h3>Recommendations</h3>
+              <h3>Recommendations at analysis</h3>
               {report.recommendations.length === 0 && (
                 <p>No additional materials requested.</p>
               )}
@@ -509,6 +559,11 @@ export function CaseFile({
       {edit && tab === "Documents" && (
         <section className="panel">
           <h2>Review assignment</h2>
+          <p className="sub">
+            {claim.reviewer_email
+              ? "Assigned to " + claim.reviewer_email
+              : "Awaiting reviewer assignment."}
+          </p>
           <form
             className="inline"
             onSubmit={(e) => {
@@ -547,16 +602,13 @@ export function CaseFile({
         </section>
       )}
       {source && (
-        <dialog open className="viewer" aria-label="Source document">
-          <div className="modalHeader">
-            <b>{source.name}</b>
-            <button
-              aria-label="Close source"
-              onClick={() => setSource(undefined)}
-            >
-              <X size={16} />
-            </button>
-          </div>
+        <Modal
+          title="Source document"
+          className="viewer"
+          closeLabel="Close source"
+          close={() => setSource(undefined)}
+        >
+          <b>{source.name}</b>
           {source.quote && <blockquote>{source.quote}</blockquote>}
           <div className="item">
             <button
@@ -575,9 +627,66 @@ export function CaseFile({
               Next
             </button>
           </div>
-          <img src={source.url} alt={source.name + " · page " + source.page} />
-        </dialog>
+          {error && <p role="alert">{error}</p>}
+          <div className="inspection">
+            <img
+              src={source.url}
+              alt={source.name + " · page " + source.page}
+            />
+            {inspected && (
+              <section className="inspector">
+                <h3>{label(inspected.name)}</h3>
+                <small>Extracted value</small>
+                <p>{inspected.value}</p>
+                {inspected.corrected && (
+                  <>
+                    <small>Reviewed value</small>
+                    <b>{inspected.corrected}</b>
+                  </>
+                )}
+                <Badge value={inspected.review} />
+                {canReview && fieldEditor(inspected)}
+              </section>
+            )}
+          </div>
+        </Modal>
       )}
     </>
+  );
+}
+
+function FieldEditor({
+  f,
+  busy,
+  save,
+}: {
+  f: Fact;
+  busy: boolean;
+  save: (action: string, value: string) => void;
+}) {
+  return (
+    <form
+      className="inline"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const value = String(new FormData(e.currentTarget).get("value"));
+        save("correct_field", value);
+      }}
+    >
+      <input
+        name="value"
+        aria-label={"Correct " + f.name}
+        placeholder="Corrected value"
+        required
+      />
+      <button disabled={busy}>Save correction</button>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => save("accept_field", "")}
+      >
+        Accept
+      </button>
+    </form>
   );
 }

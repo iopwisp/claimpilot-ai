@@ -1,3 +1,5 @@
+import { Badge, Modal } from "./shared";
+import { Samples } from "./Samples";
 import { ClaimFormFields } from "./ClaimFormFields";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -17,7 +19,6 @@ import {
   Search,
   ShieldCheck,
   SlidersHorizontal,
-  X,
 } from "lucide-react";
 import { Account, Claim, label, money, request, statuses } from "./api";
 import { CaseFile } from "./CaseFile";
@@ -33,40 +34,13 @@ export function Brand() {
     </div>
   );
 }
-export function Badge({ value }: { value: string }) {
-  return (
-    <span className={"badge " + value}>
-      <i />
-      {label(value)}
-    </span>
-  );
-}
-export function Modal({
-  title,
-  close,
-  children,
-}: {
-  title: string;
-  close: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <dialog
-      open
-      aria-modal="true"
-      onKeyDown={(e) => e.key === "Escape" && close()}
-    >
-      <div className="modalHeader">
-        <h2>{title}</h2>
-        <button aria-label="Close dialog" onClick={close}>
-          <X size={18} />
-        </button>
-      </div>
-      {children}
-    </dialog>
-  );
-}
 function Auth({ done }: { done: (a: Account) => void }) {
+  const [registrationOpen, setRegistrationOpen] = useState(false);
+  useEffect(() => {
+    request<{ registration_open: boolean }>("/auth/options")
+      .then((v) => setRegistrationOpen(v.registration_open))
+      .catch((e) => setError(e.message));
+  }, []);
   const [register, setRegister] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -77,12 +51,7 @@ function Auth({ done }: { done: (a: Account) => void }) {
     const body = Object.fromEntries(new FormData(e.currentTarget));
     try {
       if (register) await request("/auth/register", "POST", body);
-      const r = await request<{ access_token: string; user: Account }>(
-        "/auth/login",
-        "POST",
-        body,
-      );
-      sessionStorage.setItem("token", r.access_token);
+      const r = await request<{ user: Account }>("/auth/login", "POST", body);
       done(r.user);
     } catch (e) {
       setError(String((e as Error).message));
@@ -147,22 +116,25 @@ function Auth({ done }: { done: (a: Account) => void }) {
             {busy ? "Please wait…" : register ? "Create account" : "Sign in"}
             <ArrowRight size={16} />
           </button>
-          <button
-            className="link"
-            type="button"
-            onClick={() => {
-              setRegister(!register);
-              setError("");
-            }}
-          >
-            {register ? "Already registered? Sign in" : "Create an account"}
-          </button>
+          {registrationOpen && (
+            <button
+              className="link"
+              type="button"
+              onClick={() => {
+                setRegister(!register);
+                setError("");
+              }}
+            >
+              {register ? "Already registered? Sign in" : "Create an account"}
+            </button>
+          )}
         </form>
       </section>
     </main>
   );
 }
 function App() {
+  const sessionGeneration = React.useRef(0);
   const [user, setUser] = useState<Account | null>(null),
     [view, setView] = useState("Overview"),
     [selected, select] = useState(""),
@@ -170,23 +142,37 @@ function App() {
     [docs, setDocs] = useState(0),
     [error, setError] = useState(""),
     [create, setCreate] = useState(false),
+    [samples, setSamples] = useState(false),
     [q, setQ] = useState(""),
     [status, setStatus] = useState(""),
     [sort, setSort] = useState("newest"),
     [busy, setBusy] = useState(false);
   useEffect(() => {
-    if (sessionStorage.token)
-      request<Account>("/auth/me")
-        .then(setUser)
-        .catch(() => sessionStorage.removeItem("token"));
+    sessionStorage.removeItem("token");
+    const expire = () => {
+      sessionGeneration.current++;
+      setUser(null);
+      select("");
+      setClaims([]);
+      setDocs(0);
+      setCreate(false);
+      setSamples(false);
+      setView("Overview");
+      setError("");
+    };
+    window.addEventListener("claimpilot-session-ended", expire);
+    request<Account>("/auth/me")
+      .then(setUser)
+      .catch(() => {});
+    return () => window.removeEventListener("claimpilot-session-ended", expire);
   }, []);
   async function refresh() {
-    const session = sessionStorage.getItem("token");
+    const session = sessionGeneration.current;
     const [list, metrics] = await Promise.all([
       request<Claim[]>("/claims"),
       request<{ documents_processing: number }>("/dashboard"),
     ]);
-    if (session !== sessionStorage.getItem("token")) return;
+    if (session !== sessionGeneration.current) return;
     setClaims(list);
     setDocs(metrics.documents_processing);
   }
@@ -289,10 +275,10 @@ function App() {
             onClick={async () => {
               try {
                 await request("/auth/logout", "POST");
-                sessionStorage.removeItem("token");
-                  setClaims([]);
-                  setDocs(0);
-                  setError("");
+                sessionGeneration.current++;
+                setClaims([]);
+                setDocs(0);
+                setError("");
                 setUser(null);
                 select("");
                 setView("Overview");
@@ -319,7 +305,17 @@ function App() {
           {error && <p role="alert">{error}</p>}
           {selected ? (
             <>
-              <button className="link" onClick={async () => {try {await refresh();select("")}catch(e){setError((e as Error).message)}}}>
+              <button
+                className="link"
+                onClick={async () => {
+                  try {
+                    await refresh();
+                    select("");
+                  } catch (e) {
+                    setError((e as Error).message);
+                  }
+                }}
+              >
                 <ArrowLeft size={15} /> Back to {view.toLowerCase()}
               </button>
               <CaseFile
@@ -346,10 +342,16 @@ function App() {
                   </h1>
                 </div>
                 {user.role !== "reviewer" && (
-                  <button className="primary" onClick={() => setCreate(true)}>
-                    <Plus size={17} />
-                    New claim
-                  </button>
+                  <div className="caseActions">
+                    <button onClick={() => setSamples(true)}>
+                      <Files size={16} />
+                      Sample cases
+                    </button>
+                    <button className="primary" onClick={() => setCreate(true)}>
+                      <Plus size={17} />
+                      New claim
+                    </button>
+                  </div>
                 )}
               </div>
               {view === "Overview" && (
@@ -474,6 +476,16 @@ function App() {
           )}
         </div>
       </main>
+      {samples && (
+        <Samples
+          close={() => setSamples(false)}
+          opened={(c) => {
+            setSamples(false);
+            select(c.id);
+            refresh().catch((e) => setError(e.message));
+          }}
+        />
+      )}
       {create && (
         <Modal title="New claim" close={() => setCreate(false)}>
           <form onSubmit={newClaim}>

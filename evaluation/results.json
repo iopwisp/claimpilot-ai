@@ -1,6 +1,6 @@
 {
-  "model": "local-rules-v1",
-  "prompt": "2026-11-v1",
+  "model": "local-rules-v2",
+  "prompt": "2026-11-v2",
   "temperature": null,
   "metrics": {
     "structured_extraction_exact_match": 1.0,

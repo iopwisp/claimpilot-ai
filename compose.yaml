@@ -1,21 +1,26 @@
 x-api: &api
   build: .
   environment:
-    DATABASE_PASSWORD_FILE: /run/bootstrap/password
+    DATABASE_USER: claimpilot_app
+    DATABASE_PASSWORD_FILE: /run/runtime/password
     REDIS_URL: redis://redis:6379/0
     STATE_DIR: /srv/state
+    COOKIE_SECURE: ${COOKIE_SECURE:-0}
+    ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-1}
+    OCR_LANGUAGES: ${OCR_LANGUAGES:-eng+rus}
     AI_PROVIDER: ${AI_PROVIDER:-local}
     OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
     OPENAI_API_KEY: ${OPENAI_API_KEY:-}
   volumes:
     - files:/srv/state
-    - bootstrap:/run/bootstrap:ro
+    - runtime:/run/runtime:ro
 services:
   init:
     image: postgres:16-alpine
-    volumes: [bootstrap:/run/bootstrap]
-    entrypoint: [sh, -ec, "test -s /run/bootstrap/password || head -c 48 /dev/urandom | base64 > /run/bootstrap/password"]
+    volumes: [bootstrap:/run/bootstrap, runtime:/run/runtime]
+    entrypoint: [sh, -ec, "for dir in /run/bootstrap /run/runtime; do if ! test -s $$dir/password; then head -c 48 /dev/urandom | base64 > $$dir/password.tmp && mv $$dir/password.tmp $$dir/password; fi; done"]
   postgres:
+    restart: unless-stopped
     image: pgvector/pgvector:pg16
     depends_on:
       init: {condition: service_completed_successfully}
@@ -30,6 +35,7 @@ services:
       timeout: 3s
       retries: 30
   redis:
+    restart: unless-stopped
     image: redis:7-alpine
     command: [redis-server, --appendonly, "yes"]
     volumes: [jobs:/data]
@@ -38,11 +44,20 @@ services:
       interval: 3s
       timeout: 3s
       retries: 30
-  backend:
-    <<: *api
-    command: [sh, -ec, "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+  migrate:
+    build: .
+    command: [sh, -ec, "alembic upgrade head && python -m app.provision_db"]
+    environment:
+      DATABASE_PASSWORD_FILE: /run/bootstrap/password
+    volumes: [bootstrap:/run/bootstrap:ro, runtime:/run/runtime:ro]
     depends_on:
       postgres: {condition: service_healthy}
+  backend:
+    <<: *api
+    restart: unless-stopped
+    depends_on:
+      postgres: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}
     healthcheck:
       test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
@@ -51,10 +66,18 @@ services:
       retries: 30
   worker:
     <<: *api
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, "celery -A app.jobs:queue inspect ping --destination celery@$$HOSTNAME --timeout=5 | grep -q pong"]
+      interval: 30s
+      start_period: 10s
+      timeout: 10s
+      retries: 3
     command: [celery, -A, app.jobs:queue, worker, --loglevel=WARNING, --concurrency=2]
     depends_on:
       backend: {condition: service_healthy}
   frontend:
+    restart: unless-stopped
     build: frontend
     ports: ["127.0.0.1:${WEB_PORT:-8080}:80"]
     depends_on:
@@ -64,3 +87,4 @@ volumes:
   files:
   jobs:
   bootstrap:
+  runtime:
