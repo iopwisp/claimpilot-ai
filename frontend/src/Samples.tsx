@@ -5,6 +5,11 @@ import { Modal } from "./shared";
 
 const scenarios = [
   [
+    "04-notice-window",
+    "Disputed notice window",
+    "Compare two incident dates against the same notification receipt.",
+  ],
+  [
     "01-complete",
     "Complete claim",
     "Check the required materials and find the applicable coverage clause.",
@@ -28,7 +33,7 @@ export function Samples({
   close: () => void;
   opened: (claim: Claim) => void;
 }) {
-  const [choice, choose] = useState(scenarios[1][0]);
+  const [choice, choose] = useState("02-date-mismatch");
   const [key, setKey] = useState(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false),
     [error, setError] = useState("");

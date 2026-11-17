@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field as Input
 from sqlalchemy import select
 
 from app.ai.provider import provider
+from app.chronology import with_chronology
 from app.db import Analysis, Audit, Document, EvidenceRequest, Field, Inconsistency, session, uid
 from app.documents import search_policy
 from app.evidence_lab import evidence_lab, recovery_packet
@@ -40,7 +41,7 @@ def report(cid: str, auth=Depends(identity), db=Depends(session)):
     result = {
         "job_id": claim.job_id,
         "status": claim.status,
-        "report": a.result if a else None,
+        "report": with_chronology(a.result) if a else None,
         "model": a.model if a else None,
     }
     if a:
@@ -171,7 +172,7 @@ def snapshot(cid: str, aid: str, auth=Depends(identity), db=Depends(session)):
     )
     previous = db.scalar(earlier)
     return {
-        "report": record.result,
+        "report": with_chronology(record.result),
         "previous_id": previous.id if previous else None,
         "changes": changes(previous.result, record.result) if previous else None,
     }

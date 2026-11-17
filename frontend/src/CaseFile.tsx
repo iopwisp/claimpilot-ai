@@ -3,6 +3,7 @@ import { downloadReport } from "./exportReport";
 import { EvidenceTasks } from "./EvidenceTasks";
 import { AnalysisHistory } from "./AnalysisHistory";
 import { EvidenceLab } from "./EvidenceLab";
+import { Chronology } from "./Chronology";
 import { isOutstanding } from "./api";
 import { ArrowRight, ExternalLink, FileText, Play, Upload } from "lucide-react";
 import {
@@ -205,6 +206,7 @@ export function CaseFile({
           "Documents",
           "Extracted data",
           "Review report",
+          "Chronology",
           "Evidence Lab",
           "History",
           "Activity",
@@ -610,6 +612,18 @@ export function CaseFile({
           ))}
         </section>
       )}
+      {tab === "Chronology" &&
+        (report ? (
+          <Chronology key={job} report={report} run={job} open={open} />
+        ) : (
+          <section className="panel">
+            <h2>Case chronology</h2>
+            <p>
+              Run analysis to build the document timeline, or select a saved run
+              in History.
+            </p>
+          </section>
+        ))}
       {tab === "Evidence Lab" && (
         <EvidenceLab
           key={base + (historicalRun || job)}

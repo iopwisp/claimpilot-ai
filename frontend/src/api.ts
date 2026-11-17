@@ -61,6 +61,13 @@ export interface Coverage {
   evidence: Evidence[];
 }
 export interface Report {
+  overview: { incident_date: string; claim_number: string };
+  documents: Pick<Doc, "id" | "filename" | "kind">[];
+  chronology: {
+    scope: "labeled_dates" | "extracted_incidents";
+    truncated: boolean;
+    events: DatedEvent[];
+  };
   policy: Coverage;
   required_items: { name: string; status: string }[];
   inconsistencies: {
@@ -69,6 +76,12 @@ export interface Report {
     values: Partial<Fact>[];
   }[];
   recommendations: { id: string; text: string }[];
+}
+export interface DatedEvent {
+  kind: string;
+  date: string | null;
+  value: string;
+  sources: Evidence[];
 }
 export interface Event {
   action: string;

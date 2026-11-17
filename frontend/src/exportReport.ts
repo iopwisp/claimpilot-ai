@@ -137,6 +137,36 @@ export function formatReport(
     ),
     "Awaiting human review.",
   );
+  if (report.chronology)
+    section(
+      "DOCUMENT CHRONOLOGY",
+      [
+        ...report.chronology.events.map((e) =>
+          [
+            label(e.kind) +
+              " · " +
+              (e.date || e.value + " (date needs review)"),
+            ...e.sources.map(
+              (s) =>
+                "  " +
+                (report.documents.find((d) => d.id === s.document_id)
+                  ?.filename || s.document_id) +
+                ", p. " +
+                s.page +
+                " — " +
+                s.quote,
+            ),
+          ].join("\n"),
+        ),
+        ...(report.chronology.scope === "extracted_incidents"
+          ? ["Historical run includes extracted incident dates only."]
+          : []),
+        ...(report.chronology.truncated
+          ? ["Citation limit reached. Additional dates may exist."]
+          : []),
+      ],
+      "No labeled dates found.",
+    );
   return lines.join("\n") + "\n";
 }
 
@@ -145,14 +175,21 @@ export function downloadReport(
   docs: Doc[],
   result: ReviewResult,
 ) {
+  downloadText(
+    claim.claim_number + "-review.txt",
+    formatReport(claim, docs, result),
+  );
+}
+
+export function downloadText(filename: string, contents: string) {
   const url = URL.createObjectURL(
-    new Blob([formatReport(claim, docs, result)], {
+    new Blob([contents], {
       type: "text/plain;charset=utf-8",
     }),
   );
   const link = document.createElement("a");
   link.href = url;
-  link.download = claim.claim_number + "-review.txt";
+  link.download = filename;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

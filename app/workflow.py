@@ -1,7 +1,6 @@
 import json
 import re
 from collections import defaultdict
-from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
@@ -9,6 +8,7 @@ from sqlalchemy import select
 from .db import Document, Field, WorkflowSettings
 from .documents import search_policy
 from .ai.contracts import OUTPUT
+from .chronology import chronology, source_date
 
 RULES = json.loads(Path(__file__).with_name("rules.json").read_text())
 
@@ -52,15 +52,8 @@ def normalized(field, value):
         except InvalidOperation:
             return text
     if field == "incident_date":
-        try:
-            return date.fromisoformat(text).isoformat()
-        except ValueError:
-            for pattern in ("%d %B %Y", "%d %b %Y", "%B %d, %Y", "%d.%m.%Y"):
-                try:
-                    return datetime.strptime(text, pattern).date().isoformat()
-                except ValueError:
-                    continue
-            return text
+        parsed = source_date(text)
+        return parsed.isoformat() if parsed else text
     return " ".join(text.split())
 
 
@@ -228,6 +221,7 @@ def analyze(db, claim, ai):
         schema = OUTPUT[name]
         report[key] = schema.dump_python(schema.validate_python(operation()), mode="json")
     report.update(
+        chronology=chronology(facts, docs),
         extracted_fields=facts,
         sources=[row for row in facts if row["quote"]],
         requires_human_review=True,

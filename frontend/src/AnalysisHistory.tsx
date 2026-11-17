@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Fact, Report, request, label } from "./api";
+import { Chronology } from "./Chronology";
 
 interface Version {
   id: string;
@@ -121,6 +122,15 @@ export function AnalysisHistory({
               <button onClick={() => openLab(selected)}>
                 Explore this run in Evidence Lab
               </button>
+              <details className="resolved">
+                <summary>View chronology from this run</summary>
+                <Chronology
+                  key={selected}
+                  report={record.report}
+                  run={selected}
+                  open={open}
+                />
+              </details>
               <h3>
                 {diff
                   ? "Changes since run " + (versions.length - index - 1)

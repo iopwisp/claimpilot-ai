@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2] / "demo"
 
 
 class SampleInput(BaseModel):
-    scenario: Literal["01-complete", "02-date-mismatch", "03-missing-evidence"]
+    scenario: Literal["01-complete", "02-date-mismatch", "03-missing-evidence", "04-notice-window"]
     request_id: UUID
 
 

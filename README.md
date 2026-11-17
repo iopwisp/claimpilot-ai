@@ -18,6 +18,12 @@ The default provider runs offline. The first launch creates a database password,
 
 ### Walk through a claim
 
+**Case chronology.** Import **Disputed notice window**, run **Analyze claim**, and open **Chronology**. The claim form dates the incident to May 3 and the police report to May 4. The May 11 receipt falls eight or seven calendar days later. Change the comparison window or endpoint to explore both versions, open a cited page, or export the comparison with its assumptions and quotations. The window is chosen by the user. The app makes no coverage or timeliness determination.
+
+The timeline collects explicitly labeled incident, notice, inspection, treatment, invoice and policy boundary dates from processed pages and includes source-backed incident dates from extraction. Unsupported or ambiguous date values appear for review. The snapshot retains up to 300 distinct citations and flags truncation. **History** reopens the chronology from a specific run. Runs saved before this feature show the original incident-date fields they retained.
+
+For an endpoint on or after every incident date, the comparison identifies the range of windows where different incident dates give different results. In the sample, only the seven-day window separates the two versions. [View the comparison](demo/media/chronology.png).
+
 **Evidence Lab.** Import **Complete claim**, run **Analyze claim**, then open **Evidence Lab**. Switch off `form.pdf` to see which statements lose their last citation and which still have a page in another file. Expand a statement to read its quote and open the original page. **Find files to restore** suggests a repair for the current selection. **Try this packet** starts a separate scenario using the fewest files the search can prove sufficient, with a reason for each file. In this sample, the claim form and policy preserve all seven cited statements across five files.
 
 The lab reads one saved analysis. It tracks original extracted values and policy quotations. Conflicting values stay separate, reviewer corrections remain in the review report, and multiple pages of the same file count as one file. The packet covers these statements only. Reviewers still use the materials checklist for document requirements. Large searches can return a compact packet without a proof of minimum size. Simulations are temporary and also work with earlier runs through **History → Explore this run in Evidence Lab**.
@@ -52,6 +58,7 @@ The same operator command supports `admin` and `handler`. An administrator can u
 | Complete file | [01-complete](demo/01-complete) | All required materials present, source-backed policy passage |
 | Conflicting dates | [02-date-mismatch](demo/02-date-mismatch) | Claim form and police report disagree by one day |
 | Missing damage evidence | [03-missing-evidence](demo/03-missing-evidence) | Request for additional damage evidence |
+| Disputed notice window | [04-notice-window](demo/04-notice-window) | Two incident dates yield seven and eight days to the same notice |
 
 [Watch the recorded browser workflow](demo/media/review-workflow.webm) · [Inspect the discrepancy report](demo/media/date-mismatch.png)
 

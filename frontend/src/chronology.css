@@ -1,0 +1,122 @@
+.chronology {
+  display: grid;
+  gap: 14px;
+}
+.chronoTitle {
+  display: flex;
+  gap: 14px;
+  align-items: start;
+  border-radius: 12px;
+  padding: 20px 24px;
+  background: #1d473c;
+  color: #fff;
+}
+.chronoTitle svg {
+  color: #c5e59f;
+  margin-top: 5px;
+  flex: none;
+}
+.chronoTitle p {
+  margin-top: 5px;
+  color: #dfeee2;
+}
+.chronoGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 14px;
+  align-items: start;
+}
+.chronoGrid .panel {
+  min-width: 0;
+  margin: 0;
+}
+.chronoGrid h3 {
+  font-size: 18px;
+}
+.chronoGrid .panelhead {
+  flex-wrap: wrap;
+}
+.chronoGrid select {
+  max-width: 100%;
+}
+.interval label {
+  margin: 12px 0 4px;
+}
+.clockRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 0;
+  border-top: 1px solid #dce5de;
+}
+.clockRow b {
+  font-size: 21px;
+}
+.clockRow > .chronoRefs {
+  grid-column: 1/-1;
+}
+.clockRow > span {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+.inWindow {
+  background: #e7f2df;
+  color: #295536;
+}
+.outWindow,
+.chronoAlert {
+  background: #faebd7;
+  color: #674417;
+}
+.chronoAlert {
+  border-radius: 6px;
+  padding: 9px 12px;
+  margin: 12px 0;
+}
+.interval > button {
+  margin-top: 10px;
+}
+.chronoRefs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.chronoRefs button {
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.dateTrack {
+  list-style: none;
+  padding: 0 0 0 8px;
+  margin: 0;
+}
+.dateTrack li {
+  position: relative;
+  padding: 0 0 14px 18px;
+  border-left: 2px solid #cadbc9;
+  overflow-wrap: anywhere;
+}
+.dateTrack li::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: -5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #427558;
+}
+.dateTrack li:last-child {
+  padding-bottom: 0;
+}
+.dateTrack b {
+  display: block;
+}
+@media (max-width: 820px) {
+  .chronoGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
